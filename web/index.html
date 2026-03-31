@@ -1320,7 +1320,7 @@ function renderEntries() {
   if(entry.ocrKeys&&entry.ocrKeys.length>0)html+='<div class="ocr-notice"><strong>黄色背景 = OCR自動入力:</strong> 内容を必ずご確認ください。</div>';
   // --- OCR読み取り結果マップ ---
   if(entry.ocrMethod&&entry.ocrMethod!=='none'){
-    const okCount=entry.ocrKeys.filter(k=>entry.data[k]).length;
+    const okCount=entry.ocrKeys.filter(k=>fields.some(f=>f.key===k)&&entry.data[k]).length;
     const ngCount=fields.length-okCount;
     html+=`<div class="ocr-map"><h2>📊 OCR読み取り結果マップ</h2>`;
     html+=`<div class="ocr-map-summary"><span class="ok-count">○ 読み取り成功: ${okCount}項目</span><span class="ng-count">✕ 未検出: ${ngCount}項目</span></div>`;
@@ -1558,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mergedData = pdfJsResult.data || {};
           ocrKeys = pdfJsResult.keys || [];
           ocrMethod = 'pdfjs-only';
-          showToast('Gemini APIキーが未設定です。接続設定からAPIキーを入力してください。', 'error');
+          if (!geminiKey) showToast('Gemini APIキーが未設定です。接続設定からAPIキーを入力してください。', 'error');
         }
 
         // ファイル名から施設名を補完
