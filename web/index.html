@@ -1408,12 +1408,11 @@ function renderCopyArea() {
     html+='</div></details>';
     // --- ヒアリングシート全項目コピーセクション ---
     const allF=getAllFields(e.type),allG=getAllFieldGroups(e.type);
-    let allText='';
-    for(const gn of allG){const gf=allF.filter(f=>f.group===gn);allText+=`【${gn}】\n`;for(const f of gf)allText+=`${f.label}: ${e.data[f.key]||''}\n`;allText+='\n'}
+    const allText=allF.map(f=>e.data[f.key]||'').join('\t');
     html+=`<div class="copy-section-all">`;
     html+=`<h3>📋 ヒアリングシート全項目</h3>`;
-    html+=`<button class="copy-all-btn" data-copy="${escHtml(allText.trim())}" data-idx="${ei}">全項目をまとめてコピー（ラベル: 値 形式）</button>`;
-    html+=`<p class="copy-hint">↑ 全項目を「ラベル: 値」形式でコピーします</p>`;
+    html+=`<button class="copy-all-btn" data-copy="${escHtml(allText)}" data-idx="${ei}">全項目をまとめてコピー（タブ区切り・行形式）</button>`;
+    html+=`<p class="copy-hint">↑ 全項目を1行（タブ区切り）でコピーします。スプレッドシートの行に貼り付け可能です</p>`;
     for(const gn of allG){
       const gf=allF.filter(f=>f.group===gn);
       html+=`<div class="copy-group"><div class="copy-group-title">${escHtml(gn)}</div>`;
