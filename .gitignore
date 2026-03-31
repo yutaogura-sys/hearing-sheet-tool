@@ -1,0 +1,7 @@
+node_modules/
+.claude/
+*.zip
+build_zip.ps1
+test_data.json
+template_kiso.json
+template_mokutekichi.json

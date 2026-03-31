@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ヒアリングシート → スプレッドシート 変換ツール</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--primary:#2563eb;--primary-hover:#1d4ed8;--danger:#dc2626;--success:#16a34a;--gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-500:#6b7280;--gray-700:#374151;--gray-900:#111827;--radius:8px;--ocr-bg:#fefce8;--ocr-border:#fde047}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','Hiragino Sans','Meiryo',sans-serif;background:var(--gray-50);color:var(--gray-900);line-height:1.6}
+.container{max-width:960px;margin:0 auto;padding:20px}
+header{background:var(--primary);color:#fff;padding:16px 0;margin-bottom:24px}
+header h1{text-align:center;font-size:1.3rem;font-weight:600}
+.steps{display:flex;gap:4px;margin-bottom:24px}
+.step{flex:1;text-align:center;padding:10px 8px;background:var(--gray-200);border-radius:var(--radius);font-size:.85rem;color:var(--gray-500);transition:.2s}
+.step.active{background:var(--primary);color:#fff;font-weight:600}.step.done{background:var(--success);color:#fff}
+.card{background:#fff;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
+.card h2{font-size:1.1rem;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--gray-200)}
+.drop-zone{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:40px 20px;text-align:center;cursor:pointer;transition:.2s;background:var(--gray-50)}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--primary);background:#eff6ff}
+.drop-zone p{color:var(--gray-500);margin-bottom:8px}.drop-zone .icon{font-size:2rem;margin-bottom:8px}
+.drop-zone input[type=file]{display:none}
+.file-list{margin-top:12px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--gray-50);border-radius:4px;margin-bottom:4px;font-size:.9rem}
+.file-item .name{flex:1}.file-item .remove{color:var(--danger);cursor:pointer;border:none;background:none;font-size:1.1rem;padding:0 4px}
+.btn{display:inline-block;padding:10px 24px;border-radius:var(--radius);border:none;cursor:pointer;font-size:.95rem;font-weight:500;transition:.2s}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-hover)}.btn-primary:disabled{background:var(--gray-300);cursor:not-allowed}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-outline{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-outline:hover{background:var(--gray-50)}
+.btn-row{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--gray-200);margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 16px;cursor:pointer;border:none;background:none;font-size:.9rem;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}.tab:hover{color:var(--primary)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.85rem;font-weight:500;color:var(--gray-700);margin-bottom:4px}
+.form-group label .col-id{color:var(--primary);font-weight:700;margin-right:4px}
+.form-group label .required{color:var(--danger);margin-left:2px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--gray-300);border-radius:4px;font-size:.95rem;font-family:inherit;transition:.2s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-group input.ocr-filled,.form-group select.ocr-filled{background:var(--ocr-bg);border-color:var(--ocr-border)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.form-row{grid-template-columns:1fr}}
+.type-selector{display:flex;gap:12px;margin-bottom:16px}
+.type-btn{flex:1;padding:14px;border:2px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;text-align:center;transition:.2s;background:#fff}
+.type-btn:hover{border-color:var(--primary)}.type-btn.selected{border-color:var(--primary);background:#eff6ff}
+.type-btn .title{font-weight:600;font-size:1rem}.type-btn .desc{font-size:.8rem;color:var(--gray-500);margin-top:4px}
+.pdf-text{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:4px;padding:12px;font-size:.82rem;color:var(--gray-500);max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-bottom:12px}
+.section{display:none}.section.active{display:block}
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--radius);color:#fff;font-weight:500;z-index:1000;transform:translateX(120%);transition:.3s;max-width:400px}
+.toast.show{transform:translateX(0)}.toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:#2563eb}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:2000}
+.loading-box{background:#fff;border-radius:var(--radius);padding:32px 48px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.2);max-width:480px}
+.loading-box h3{margin-bottom:16px;font-size:1.1rem}
+.loading-box .spinner{width:48px;height:48px;border:4px solid var(--gray-200);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-box .progress-text{font-size:.9rem;color:var(--gray-500)}
+.loading-box .progress-bar{width:100%;height:6px;background:var(--gray-200);border-radius:3px;margin-top:12px;overflow:hidden}
+.loading-box .progress-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .3s;width:0%}
+.ocr-notice{background:var(--ocr-bg);border:1px solid var(--ocr-border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#92400e}
+.ocr-notice strong{color:#78350f}
+.ocr-method{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600;margin-left:8px}
+.ocr-method.google{background:#dcfce7;color:#166534}.ocr-method.tesseract{background:#fef3c7;color:#92400e}
+.ocr-stats{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#166534}
+.ocr-stats strong{color:#14532d}
+.copy-section{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.copy-section h3{font-size:1rem;color:#166534;margin-bottom:12px}
+.copy-row-btn{display:block;width:100%;padding:14px;background:var(--success);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600;cursor:pointer;transition:.2s;margin-bottom:12px}
+.copy-row-btn:hover{background:#15803d}.copy-row-btn:active{transform:scale(.98)}
+.copy-hint{font-size:.82rem;color:var(--gray-500);text-align:center;margin-bottom:16px}
+.copy-preview{background:#fff;border:1px solid var(--gray-200);border-radius:4px;padding:12px;font-size:.82rem;overflow-x:auto;white-space:nowrap;color:var(--gray-700);margin-bottom:12px;font-family:'Consolas','Courier New',monospace}
+.copy-field{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:.85rem}
+.copy-field:last-child{border-bottom:none}
+.copy-field .cf-col{color:var(--primary);font-weight:700;min-width:24px}
+.copy-field .cf-label{color:var(--gray-500);min-width:140px;font-size:.8rem}
+.copy-field .cf-value{flex:1;font-weight:500;word-break:break-all}
+.copy-field .cf-copy-btn{padding:2px 10px;font-size:.75rem;background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;cursor:pointer;color:var(--gray-700);white-space:nowrap}
+.copy-field .cf-copy-btn:hover{background:var(--gray-200)}
+.copy-field .cf-copy-btn.copied{background:#dcfce7;border-color:#86efac;color:#166534}
+.ocr-map{background:#fff;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
+.ocr-map h2{font-size:1.1rem;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--gray-200)}
+.ocr-map-content{display:flex;gap:20px;flex-wrap:wrap}
+.ocr-map-pdf{flex:1;min-width:280px;max-height:600px;overflow:auto;border:1px solid var(--gray-200);border-radius:4px;background:var(--gray-50)}
+.ocr-map-pdf canvas{width:100%;display:block}
+.ocr-map-fields{flex:1;min-width:280px}
+.ocr-field-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--gray-100);font-size:.88rem}
+.ocr-field-row:last-child{border-bottom:none}
+.ocr-field-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.ocr-field-icon.ok{background:#dcfce7;color:#166534}
+.ocr-field-icon.ng{background:#fef2f2;color:#991b1b}
+.ocr-field-col{color:var(--primary);font-weight:700;min-width:22px}
+.ocr-field-label{flex:1;color:var(--gray-700)}
+.ocr-field-value{max-width:180px;font-size:.82rem;color:var(--gray-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ocr-map-legend{display:flex;gap:16px;margin-bottom:14px;font-size:.85rem;color:var(--gray-500)}
+.ocr-map-legend span{display:flex;align-items:center;gap:4px}
+.ocr-map-summary{display:flex;gap:20px;margin-bottom:16px;font-size:.95rem;font-weight:600}
+.ocr-map-summary .ok-count{color:#166534}.ocr-map-summary .ng-count{color:#991b1b}
+@media(max-width:640px){.ocr-map-content{flex-direction:column}}
+.all-fields-group{margin-bottom:20px}
+.all-fields-group-title{font-size:.95rem;font-weight:600;color:var(--primary);padding:8px 0 6px;border-bottom:1px solid var(--gray-200);margin-bottom:12px}
+.copy-section-all{background:#eff6ff;border:2px solid #bfdbfe;border-radius:var(--radius);padding:20px;margin-top:16px}
+.copy-section-all h3{font-size:1rem;color:#1e40af;margin-bottom:12px}
+.copy-all-btn{display:block;width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600;cursor:pointer;transition:.2s;margin-bottom:12px}
+.copy-all-btn:hover{background:#1d4ed8}
+.copy-all-btn:active{transform:scale(.98)}
+.copy-group{background:#fff;border:1px solid var(--gray-200);border-radius:4px;padding:12px;margin-bottom:12px}
+.copy-group-title{font-size:.9rem;font-weight:600;color:#1e40af;padding-bottom:6px;border-bottom:1px solid var(--gray-100);margin-bottom:8px}
+</style>
+</head>
+<body>
+<header><h1>ヒアリングシート → スプレッドシート 変換ツール</h1></header>
+<div class="container">
+  <div class="steps">
+    <div class="step active" id="step-ind-1">1. ファイル選択</div>
+    <div class="step" id="step-ind-2">2. データ確認・編集</div>
+    <div class="step" id="step-ind-3">3. コピー&貼り付け</div>
+  </div>
+  <div class="section active" id="section-1">
+    <details id="settings-toggle" style="margin-bottom:20px">
+      <summary class="card" style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;border:none;padding:0;font-size:1.1rem">接続設定（初回のみ・入力は保存されます）</h2>
+        <span style="color:var(--gray-500);font-size:.85rem" class="toggle-hint">クリックで開く ▼</span>
+      </summary>
+      <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;margin-top:-1px">
+      <div class="form-group">
+        <label>Gemini APIキー <span style="color:var(--success);font-weight:700">（★高精度OCR）</span></label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy..." style="font-size:.85rem">
+        <div style="font-size:.78rem;color:var(--gray-500);margin-top:4px">
+          <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">→ 無料でAPIキーを取得</a>
+          （Google AI StudioでAPIキーを作成 → ここに貼り付け）
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label style="font-size:.82rem">Geminiモデル</label>
+        <select id="gemini-model" style="font-size:.82rem;padding:6px 10px">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash（推奨）</option>
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash（予備）</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline" id="btn-gas-test" style="font-size:.82rem;padding:6px 14px">接続テスト</button>
+        <span id="gas-status" style="font-size:.82rem;color:var(--gray-500)"></span>
+      </div>
+      <div style="margin-top:12px;font-size:.82rem">
+        <a href="使い方ガイド.html" target="_blank" style="color:var(--primary)">使い方ガイドを見る（APIキーの取得手順など）</a>
+      </div>
+      <input type="hidden" id="gas-url" value="">
+      </div>
+    </details>
+    <div class="card">
+      <h2>PDFヒアリングシート（複数可）</h2>
+      <div class="drop-zone" id="pdf-drop">
+        <div class="icon">📄</div>
+        <p>PDFファイルをドラッグ&ドロップ、またはクリックして選択</p>
+        <input type="file" id="pdf-input" accept=".pdf" multiple>
+      </div>
+      <div class="file-list" id="pdf-file-list"></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" id="btn-to-step2" disabled>次へ：OCR解析 →</button></div>
+  </div>
+  <div class="section" id="section-2">
+    <div class="tabs" id="entry-tabs"></div>
+    <div id="entry-panels"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-back-1">← 戻る</button>
+      <button class="btn btn-primary" id="btn-add-entry">＋ 手動でエントリ追加</button>
+      <button class="btn btn-success" id="btn-to-step3">コピー画面へ →</button>
+    </div>
+  </div>
+  <div class="section" id="section-3">
+    <div id="copy-area"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-back-2">← 戻って修正</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KISO_FIELDS=[
+  {col:'E',key:'leadPartner',label:'リード獲得パートナー',options:['ストア','エネ同行']},
+  {col:'F',key:'salesPerson',label:'ストア様 営業担当',required:true},
+  {col:'G',key:'applicationPeriod',label:'申請予定時期',options:['R8-1','R8-2','東京都補助金','未定','補助金申請なし'],required:true},
+  {col:'H',key:'propertyName',label:'物件名',required:true},
+  {col:'I',key:'plan',label:'プラン',options:['マンションゼロプラン','月極駐車場ゼロプラン']},
+  {col:'J',key:'mansionType',label:'マンション種別',options:['賃貸','分譲','月極駐車場'],required:true},
+  {col:'K',key:'kwNumber',label:'充電器のkW数',options:['6kW','3kW'],required:true},
+  {col:'L',key:'newOrExisting',label:'新築or既築',options:['新築','既築']},
+  {col:'M',key:'address',label:'物件住所',required:true},
+  {col:'N',key:'landOwner',label:'土地所有者 同一or異なる',options:['同一','異なる']},
+  {col:'O',key:'units',label:'戸数'},
+  {col:'P',key:'parkingCount',label:'駐車場台数'},
+  {col:'Q',key:'applicationCount',label:'申込口数',required:true},
+  {col:'R',key:'companyName',label:'取引先会社名',required:true},
+  {col:'S',key:'companyAddress',label:'取引先住所'},
+  {col:'T',key:'csCompany',label:'クラウドサイン送付先 会社名'},
+  {col:'U',key:'csPersonName',label:'クラウドサイン送付先 担当者名'},
+  {col:'V',key:'csEmail',label:'クラウドサイン送付先 アドレス'},
+];
+const MOKU_FIELDS=[
+  {col:'E',key:'leadPartner',label:'リード獲得パートナー',options:['ストア','エネ同行']},
+  {col:'F',key:'salesPerson',label:'ストア様 営業担当',required:true},
+  {col:'G',key:'applicationPeriod',label:'申請予定時期',options:['R8-1','R8-2','東京都補助金','未定'],required:true},
+  {col:'H',key:'facilityName',label:'施設名称',required:true},
+  {col:'I',key:'industry',label:'業種',required:true},
+  {col:'J',key:'plan',label:'プラン',options:['プライムゼロプラン','スタンダードプラン','ゼロプラン','ベーシックプラン']},
+  {col:'K',key:'kwNumber',label:'充電器のkW数',options:['6kW','3kW']},
+  {col:'L',key:'address',label:'施設住所',required:true},
+  {col:'M',key:'landOwner',label:'土地所有者 同一or異なる',options:['同一','異なる']},
+  {col:'N',key:'parkingCount',label:'駐車場台数'},
+  {col:'O',key:'applicationCount',label:'申込口数',required:true},
+  {col:'P',key:'companyName',label:'取引先会社名',required:true},
+  {col:'Q',key:'companyAddress',label:'取引先住所'},
+  {col:'R',key:'csCompany',label:'クラウドサイン送付先 会社名'},
+  {col:'S',key:'csPersonName',label:'クラウドサイン送付先 担当者名'},
+  {col:'T',key:'csEmail',label:'クラウドサイン送付先 アドレス'},
+];
+
+// ヒアリングシート全項目フィールド定義（グループ付き）
+const KISO_ALL_FIELDS=[
+  // 施設情報
+  {key:'leadPartner',label:'リード獲得パートナー',group:'施設情報',options:['ストア','エネ同行']},
+  {key:'facilityName',label:'施設名',group:'施設情報',required:true},
+  {key:'propertyName',label:'物件名',group:'施設情報',required:true},
+  {key:'companyName',label:'会社名',group:'施設情報',required:true},
+  {key:'facilityAddress',label:'施設住所',group:'施設情報',required:true},
+  {key:'address',label:'物件住所',group:'施設情報',required:true},
+  {key:'industry',label:'業種',group:'施設情報',options:['(賃貸)マンション・アパート','(分譲)マンション','月極駐車場'],required:true},
+  {key:'mansionType',label:'マンション種別',group:'施設情報',options:['賃貸','分譲','月極駐車場']},
+  {key:'landOwner',label:'土地の所有者',group:'施設情報',options:['同一','別']},
+  {key:'newOrExisting',label:'新築or既築',group:'施設情報',options:['新築','既築']},
+  {key:'applicationCount',label:'申込台数',group:'施設情報',required:true},
+  {key:'parkingCount',label:'収容台数',group:'施設情報',required:true},
+  {key:'units',label:'戸数',group:'施設情報'},
+  {key:'applicationPeriod',label:'申請予定時期',group:'施設情報',options:['R8-1','R8-2','東京都補助金','未定','補助金申請なし'],required:true},
+  {key:'plan',label:'プラン',group:'施設情報',options:['マンションゼロプラン','月極駐車場ゼロプラン']},
+  {key:'mansionUnits',label:'マンション住戸数',group:'施設情報'},
+  {key:'ownerAddressSame',label:'マンション所有者の住所先',group:'施設情報',options:['同一','別']},
+  // 商談相手
+  {key:'contactCompany',label:'商談相手 会社名',group:'商談相手'},
+  {key:'contactRole',label:'商談相手 役職',group:'商談相手'},
+  {key:'contactName',label:'商談相手 氏名',group:'商談相手'},
+  {key:'contactEmail',label:'商談相手 メールアドレス',group:'商談相手'},
+  {key:'contactPhone',label:'商談相手 電話番号',group:'商談相手'},
+  // 施設連絡先
+  {key:'facilityContact1Company',label:'施設連絡先1 会社名',group:'施設連絡先'},
+  {key:'facilityContact1Name',label:'施設連絡先1 氏名',group:'施設連絡先'},
+  {key:'facilityContact1Email',label:'施設連絡先1 メールアドレス',group:'施設連絡先'},
+  {key:'facilityContact1Phone',label:'施設連絡先1 電話番号',group:'施設連絡先'},
+  // 管理会社
+  {key:'hasManagementCompany',label:'管理会社あり/なし',group:'管理会社',options:['なし','あり']},
+  {key:'managementCompanyName',label:'管理会社名',group:'管理会社'},
+  {key:'managementPersonName',label:'管理会社担当者名',group:'管理会社'},
+  {key:'managementEmail',label:'管理会社メールアドレス',group:'管理会社'},
+  {key:'managementPhone',label:'管理会社電話番号',group:'管理会社'},
+  // 駐車場・充電器
+  {key:'parkingType',label:'施設駐車場情報',group:'駐車場・充電器',options:['自走立体(マンションプラン)','平置き(マンション・月極駐車場)','敷地外設置(平置き/マンションプラン)','敷地外設置(自走立体/マンションプラン)']},
+  {key:'existingCharger',label:'既設充電器',group:'駐車場・充電器',options:['あり','なし','撤去','増設']},
+  {key:'kwNumber',label:'充電器のkW数(SS)',group:'駐車場・充電器',options:['6kW','3kW']},
+  {key:'kwType',label:'充電器のkW数(詳細)',group:'駐車場・充電器',options:['6kW普通充電器','3kWコンセント']},
+  // 紹介・同行
+  {key:'referralSource',label:'紹介元',group:'紹介・同行'},
+  {key:'referralAmount',label:'紹介元金額',group:'紹介・同行'},
+  {key:'accompanyType',label:'同行タイプ',group:'紹介・同行',options:['ストア単独','エネ同行']},
+  {key:'accompanyName',label:'同行者名',group:'紹介・同行'},
+  // クラウドサイン・取引先
+  {key:'companyAddress',label:'取引先住所',group:'クラウドサイン・取引先'},
+  {key:'csCompany',label:'クラウドサイン送付先 会社名',group:'クラウドサイン・取引先'},
+  {key:'csPersonName',label:'クラウドサイン送付先 担当者名',group:'クラウドサイン・取引先'},
+  {key:'csEmail',label:'クラウドサイン送付先 アドレス',group:'クラウドサイン・取引先'},
+  // その他
+  {key:'salesPerson',label:'担当営業',group:'その他',required:true},
+  {key:'notes',label:'備考',group:'その他'},
+];
+const MOKU_ALL_FIELDS=[
+  // 施設情報
+  {key:'leadPartner',label:'リード獲得パートナー',group:'施設情報',options:['ストア','エネ同行']},
+  {key:'facilityName',label:'施設名称',group:'施設情報',required:true},
+  {key:'companyName',label:'会社名',group:'施設情報',required:true},
+  {key:'companyAddress',label:'会社住所',group:'施設情報'},
+  {key:'facilityAddress',label:'施設住所',group:'施設情報',required:true},
+  {key:'address',label:'施設住所(SS)',group:'施設情報',required:true},
+  {key:'industry',label:'業種',group:'施設情報',options:['宿泊施設','ゴルフ場','温浴施設','ショッピングセンター','パチンコ店','飲食店','役場・自治体施設','病院・クリニック','ディーラー','複合スーパー','空港','道の駅','葬祭場','倉庫','小規模複合施設','公園','学校','レジャー施設','レジャーホテル','その他'],required:true},
+  {key:'industryOther',label:'業種（その他の場合）',group:'施設情報'},
+  {key:'landOwner',label:'土地の所有者',group:'施設情報',options:['同一','別']},
+  {key:'applicationCount',label:'申込台数',group:'施設情報',required:true},
+  {key:'parkingCount',label:'収容台数',group:'施設情報'},
+  {key:'applicationPeriod',label:'申請予定時期',group:'施設情報',options:['R8-1','R8-2','東京都補助金','未定'],required:true},
+  {key:'plan',label:'プラン',group:'施設情報',options:['プライムゼロプラン','スタンダードプラン','ゼロプラン','ベーシックプラン']},
+  // 商談相手
+  {key:'contactCompany',label:'商談相手 会社名',group:'商談相手'},
+  {key:'contactRole',label:'商談相手 役職',group:'商談相手'},
+  {key:'contactName',label:'商談相手 氏名',group:'商談相手'},
+  {key:'contactEmail',label:'商談相手 メールアドレス',group:'商談相手'},
+  {key:'contactPhone',label:'商談相手 電話番号',group:'商談相手'},
+  // 施設連絡先
+  {key:'facilityContact1Company',label:'施設連絡先1 会社名',group:'施設連絡先'},
+  {key:'facilityContact1Name',label:'施設連絡先1 氏名',group:'施設連絡先'},
+  {key:'facilityContact1Email',label:'施設連絡先1 メールアドレス',group:'施設連絡先'},
+  {key:'facilityContact1Phone',label:'施設連絡先1 電話番号',group:'施設連絡先'},
+  // 駐車場・充電器
+  {key:'parkingLocation',label:'駐車場情報',group:'駐車場・充電器',options:['施設内駐車場','施設内駐車場(敷地外設置)']},
+  {key:'sharedParking',label:'複数施設で共同利用している駐車場',group:'駐車場・充電器',options:['あり','なし']},
+  {key:'hourlyParking',label:'時間貸し駐車場',group:'駐車場・充電器',options:['(併設された施設なし)','(併設された施設あり)']},
+  {key:'parkingFee',label:'駐車料金',group:'駐車場・充電器',options:['有料','条件付き無料','無料','不明']},
+  {key:'charger24h',label:'充電器24時間利用可能',group:'駐車場・充電器',options:['可能','不可能']},
+  {key:'charger24hHours',label:'不可の場合の利用可能時間',group:'駐車場・充電器'},
+  {key:'existingCharger',label:'既設充電器',group:'駐車場・充電器',options:['あり','なし','撤去','増設']},
+  {key:'contractPlan',label:'契約プラン',group:'駐車場・充電器',options:['プライムゼロプラン','スタンダードプラン','ゼロプラン','ベーシックプラン']},
+  {key:'kwNumber',label:'充電器のkW数(SS)',group:'駐車場・充電器',options:['6kW','3kW']},
+  {key:'kwType',label:'充電器のkW数(詳細)',group:'駐車場・充電器',options:['6kW普通充電器','3kWコンセント']},
+  // 紹介・同行
+  {key:'accompanyType',label:'同行タイプ',group:'紹介・同行',options:['ストア単独','エネ同行']},
+  {key:'accompanyName',label:'同行者名',group:'紹介・同行'},
+  {key:'referralSource',label:'紹介元',group:'紹介・同行'},
+  {key:'referralAmount',label:'紹介元金額',group:'紹介・同行'},
+  // クラウドサイン・取引先
+  {key:'csCompany',label:'クラウドサイン送付先 会社名',group:'クラウドサイン・取引先'},
+  {key:'csPersonName',label:'クラウドサイン送付先 担当者名',group:'クラウドサイン・取引先'},
+  {key:'csEmail',label:'クラウドサイン送付先 アドレス',group:'クラウドサイン・取引先'},
+  // その他
+  {key:'salesPerson',label:'担当営業',group:'その他',required:true},
+  {key:'notes',label:'備考',group:'その他'},
+];
+const ALL_GROUPS_KISO=['施設情報','商談相手','施設連絡先','管理会社','駐車場・充電器','紹介・同行','クラウドサイン・取引先','その他'];
+const ALL_GROUPS_MOKU=['施設情報','商談相手','施設連絡先','駐車場・充電器','紹介・同行','クラウドサイン・取引先','その他'];
+function getAllFields(type){return type==='kiso'?KISO_ALL_FIELDS:MOKU_ALL_FIELDS}
+function getAllFieldGroups(type){return type==='kiso'?ALL_GROUPS_KISO:ALL_GROUPS_MOKU}
+
+let pdfFiles=[], entries=[], activeEntryIdx=0, entryIdCounter=0;
+
+function showToast(m,t='success'){const el=document.getElementById('toast');el.textContent=m;el.className='toast '+t+' show';setTimeout(()=>el.classList.remove('show'),4000)}
+function goToStep(n){for(let i=1;i<=3;i++){document.getElementById('section-'+i).classList.toggle('active',i===n);const ind=document.getElementById('step-ind-'+i);ind.classList.remove('active','done');if(i<n)ind.classList.add('done');else if(i===n)ind.classList.add('active')}}
+function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function showLoading(t,d){let o=document.getElementById('loading-overlay');if(!o){o=document.createElement('div');o.id='loading-overlay';o.className='loading-overlay';o.innerHTML='<div class="loading-box"><div class="spinner"></div><h3 id="loading-title"></h3><div class="progress-text" id="loading-detail"></div><div class="progress-bar"><div class="progress-fill" id="loading-progress"></div></div></div>';document.body.appendChild(o)}o.style.display='flex';document.getElementById('loading-title').textContent=t;document.getElementById('loading-detail').textContent=d||''}
+function updateLoading(d,p){const el=document.getElementById('loading-detail');if(el)el.textContent=d;if(p!==undefined){const b=document.getElementById('loading-progress');if(b)b.style.width=p+'%'}}
+function hideLoading(){const o=document.getElementById('loading-overlay');if(o)o.style.display='none'}
+function setupDropZone(dropId,inputId,onFiles){const drop=document.getElementById(dropId),input=document.getElementById(inputId);drop.addEventListener('click',()=>input.click());drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('dragover')});drop.addEventListener('dragleave',()=>drop.classList.remove('dragover'));drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('dragover');onFiles(e.dataTransfer.files)});input.addEventListener('change',()=>{onFiles(input.files);input.value=''})}
+function renderPdfFileList(){const l=document.getElementById('pdf-file-list');l.innerHTML=pdfFiles.map((f,i)=>`<div class="file-item"><span class="name">📄 ${f.name}</span><button class="remove" data-idx="${i}">✕</button></div>`).join('');l.querySelectorAll('.remove').forEach(b=>{b.addEventListener('click',()=>{pdfFiles.splice(+b.dataset.idx,1);renderPdfFileList();checkReady()})})}
+function checkReady(){document.getElementById('btn-to-step2').disabled=pdfFiles.length===0}
+
+// ============================================================
+// pdf.js テキスト抽出（位置情報付き・改善版v2）
+// - y閾値を緩和（6px）してフォーム行を正確にグループ化
+// - ラベル幅を実測（transform[0]）でgap計算
+// - key:value ペアリストも同時に返す
+// ============================================================
+async function extractTextFromPdfJs(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+  const allItems = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    for (const item of tc.items) {
+      if (item.str.trim()) {
+        // transform[0] = 水平スケール ≈ フォントサイズに比例
+        const w = item.width || (item.str.length * Math.abs(item.transform[0]) * 0.6);
+        allItems.push({ text: item.str.trim(), x: item.transform[4], y: item.transform[5], w, page: p });
+      }
+    }
+  }
+  allItems.sort((a,b) => a.page-b.page || b.y-a.y || a.x-b.x);
+  const rows = [];
+  let curRow = [];
+  let lastY = -9999, lastPage = -1;
+  for (const item of allItems) {
+    if (curRow.length && (item.page !== lastPage || Math.abs(item.y - lastY) > 6)) {
+      rows.push(curRow);
+      curRow = [];
+    }
+    curRow.push(item);
+    lastY = item.y;
+    lastPage = item.page;
+  }
+  if (curRow.length) rows.push(curRow);
+
+  const lines = [];
+  for (const row of rows) {
+    row.sort((a,b) => a.x - b.x);
+    let line = '';
+    for (let i = 0; i < row.length; i++) {
+      if (i > 0) {
+        const prevEnd = row[i-1].x + (row[i-1].w || row[i-1].text.length * 5);
+        const gap = row[i].x - prevEnd;
+        line += gap > 20 ? '\t' : ' ';
+      }
+      line += row[i].text;
+    }
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
+// ============================================================
+// ファイルをBase64に変換する共通関数
+// ============================================================
+async function fileToBase64(file) {
+  const ab = await file.arrayBuffer();
+  const bytes = new Uint8Array(ab);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+// ============================================================
+// Gemini AI OCR（ブラウザから直接呼び出し ― GAS不要）
+// PDFをGeminiに直接読ませて構造化データとして抽出
+// ============================================================
+function buildGeminiPrompt() {
+  return [
+    'あなたはOCR読み取りの専門家です。',
+    'このPDFはEV充電器設置に関する「ヒアリングシート」です。',
+    '手書き文字・印刷文字の両方を正確に読み取り、以下のJSON形式で返してください。',
+    '',
+    '【最重要ルール】',
+    '- チェックボックス（✓やレ点）でチェックされている選択肢を読み取ること',
+    '- 手書き文字は一文字一文字丁寧に読み取ること',
+    '- 日本語の氏名、会社名、住所は特に注意して読み取ること',
+    '- 値が存在しない・読み取れない場合は空文字 "" にすること',
+    '- JSON以外のテキストは出力しないこと',
+    '',
+    '【シート種別の判定】',
+    '- 「基礎Ver」が含まれる → sheetType: "kiso"',
+    '- 「目的地Ver」が含まれる → sheetType: "mokutekichi"',
+    '',
+    '【抽出項目（基礎Ver: sheetType="kiso"）】',
+    '以下のJSONキーすべてを抽出してください。',
+    '{',
+    '  "sheetType": "kiso",',
+    '  "leadPartner": "リード獲得（チェック欄: ストア単独→ストア / エネ同行or共栄単独→エネ同行）",',
+    '  "salesPerson": "担当営業の氏名（手書き）",',
+    '  "applicationPeriod": "申請予定時期のチェック欄（R8-1 / R8-2 / 東京都補助金 / 未定 / 補助金申請なし）",',
+    '  "propertyName": "施設名（手書き）",',
+    '  "plan": "プラン（賃貸or分譲→マンションゼロプラン / 月極駐車場→月極駐車場ゼロプラン）",',
+    '  "mansionType": "業種チェック欄（賃貸 / 分譲 / 月極駐車場）",',
+    '  "kwNumber": "充電器kW数チェック欄（6kW / 3kW）",',
+    '  "newOrExisting": "新築or既築チェック欄（新築 / 既築）",',
+    '  "address": "施設住所（手書き、〒郵便番号含む）",',
+    '  "landOwner": "土地所有者チェック欄（同一 / 異なる）",',
+    '  "units": "マンション住戸数（数字のみ）",',
+    '  "parkingCount": "収容台数（数字のみ）",',
+    '  "applicationCount": "申込台数（数字のみ）",',
+    '  "companyName": "会社名（施設の会社名、手書き）",',
+    '  "companyAddress": "会社住所（手書き、〒含む）",',
+    '  "csCompany": "商談相手の会社名（手書き、「同上」なら会社名companyNameと同じ値を入れる）",',
+    '  "csPersonName": "商談相手の氏名（手書き）",',
+    '  "csEmail": "商談相手のメールアドレス（手書き）",',
+    '  "facilityName": "施設名（propertyNameと同じ値でOK）",',
+    '  "facilityAddress": "施設住所（addressと同じ値でOK）",',
+    '  "industry": "業種チェック欄（(賃貸)マンション・アパート / (分譲)マンション / 月極駐車場）",',
+    '  "contactCompany": "商談相手の会社名（手書き）",',
+    '  "contactRole": "商談相手の役職（手書き）",',
+    '  "contactName": "商談相手の氏名（手書き）",',
+    '  "contactEmail": "商談相手のメールアドレス（手書き）",',
+    '  "contactPhone": "商談相手の電話番号（手書き）",',
+    '  "facilityContact1Company": "施設連絡先1の会社名（手書き）",',
+    '  "facilityContact1Name": "施設連絡先1の氏名（手書き）",',
+    '  "facilityContact1Email": "施設連絡先1のメールアドレス（手書き）",',
+    '  "facilityContact1Phone": "施設連絡先1の電話番号（手書き）",',
+    '  "hasManagementCompany": "管理会社チェック欄（あり / なし）",',
+    '  "managementCompanyName": "管理会社名（手書き）",',
+    '  "managementPersonName": "管理会社担当者名（手書き）",',
+    '  "managementEmail": "管理会社メールアドレス（手書き）",',
+    '  "managementPhone": "管理会社電話番号（手書き）",',
+    '  "mansionUnits": "マンション住戸数（数字のみ、unitsと同じ値でOK）",',
+    '  "ownerAddressSame": "マンション所有者の住所先チェック欄（同一 / 別）",',
+    '  "parkingType": "施設駐車場情報チェック欄（自走立体(マンションプラン) / 平置き(マンション・月極駐車場) / 敷地外設置）",',
+    '  "existingCharger": "既設充電器チェック欄（あり / なし / 撤去 / 増設）",',
+    '  "kwType": "充電器のkW数チェック欄（6kW普通充電器 / 3kWコンセント）",',
+    '  "referralSource": "紹介元（手書き）",',
+    '  "referralAmount": "紹介元金額（手書き）",',
+    '  "accompanyType": "同行タイプチェック欄（ストア単独 / エネ同行）",',
+    '  "accompanyName": "同行者名（手書き）",',
+    '  "notes": "備考欄（手書き）"',
+    '}',
+    '',
+    '【抽出項目（目的地Ver: sheetType="mokutekichi"）】',
+    '以下のJSONキーすべてを抽出してください。',
+    '{',
+    '  "sheetType": "mokutekichi",',
+    '  "leadPartner": "リード獲得（同上）",',
+    '  "salesPerson": "担当営業の氏名",',
+    '  "applicationPeriod": "申請予定時期チェック欄",',
+    '  "facilityName": "施設名称（手書き）",',
+    '  "industry": "業種（ゴルフ場/宿泊施設/温浴施設/飲食店/病院 等）",',
+    '  "plan": "契約プランチェック欄（プライムゼロプラン/スタンダードプラン/ゼロプラン/ベーシックプラン）",',
+    '  "kwNumber": "充電器kW数チェック欄（6kW / 3kW）",',
+    '  "address": "施設住所（〒含む）",',
+    '  "landOwner": "土地所有者チェック欄（同一 / 異なる）",',
+    '  "parkingCount": "駐車場台数（数字のみ）",',
+    '  "applicationCount": "申込口数（数字のみ）",',
+    '  "companyName": "取引先会社名",',
+    '  "companyAddress": "取引先住所",',
+    '  "csCompany": "クラウドサイン送付先会社名",',
+    '  "csPersonName": "クラウドサイン送付先担当者名",',
+    '  "csEmail": "クラウドサイン送付先メールアドレス",',
+    '  "facilityAddress": "施設住所（addressと同じ値でOK）",',
+    '  "industryOther": "業種がその他の場合の詳細（手書き）",',
+    '  "contactCompany": "商談相手の会社名（手書き）",',
+    '  "contactRole": "商談相手の役職（手書き）",',
+    '  "contactName": "商談相手の氏名（手書き）",',
+    '  "contactEmail": "商談相手のメールアドレス（手書き）",',
+    '  "contactPhone": "商談相手の電話番号（手書き）",',
+    '  "facilityContact1Company": "施設連絡先1の会社名（手書き）",',
+    '  "facilityContact1Name": "施設連絡先1の氏名（手書き）",',
+    '  "facilityContact1Email": "施設連絡先1のメールアドレス（手書き）",',
+    '  "facilityContact1Phone": "施設連絡先1の電話番号（手書き）",',
+    '  "parkingLocation": "駐車場情報チェック欄（施設内駐車場 / 施設内駐車場(敷地外設置)）",',
+    '  "sharedParking": "複数施設で共同利用している駐車場チェック欄（あり / なし）",',
+    '  "hourlyParking": "時間貸し駐車場チェック欄（(併設された施設なし) / (併設された施設あり)）",',
+    '  "parkingFee": "駐車料金チェック欄（有料 / 条件付き無料 / 無料 / 不明）",',
+    '  "charger24h": "充電器24時間利用可能チェック欄（可能 / 不可能）",',
+    '  "charger24hHours": "24時間利用不可の場合の利用可能時間（手書き）",',
+    '  "existingCharger": "既設充電器チェック欄（あり / なし / 撤去 / 増設）",',
+    '  "contractPlan": "契約プランチェック欄（プライムゼロプラン / スタンダードプラン / ゼロプラン / ベーシックプラン）",',
+    '  "kwType": "充電器のkW数チェック欄（6kW普通充電器 / 3kWコンセント）",',
+    '  "accompanyType": "同行タイプチェック欄（ストア単独 / エネ同行）",',
+    '  "accompanyName": "同行者名（手書き）",',
+    '  "referralSource": "紹介元（手書き）",',
+    '  "referralAmount": "紹介元金額（手書き）",',
+    '  "notes": "備考欄（手書き）"',
+    '}',
+    '',
+    'JSONのみを返してください。説明文やマークダウンのコードブロック記法は不要です。'
+  ].join('\n');
+}
+
+async function ocrViaGemini(file, geminiKey, fi, total) {
+  const modelId = document.getElementById('gemini-model').value || 'gemini-2.5-flash';
+  updateLoading(`PDF ${fi+1}/${total}: ${modelId} へ送信中...`, Math.round((fi/total)*100));
+  const base64 = await fileToBase64(file);
+
+  updateLoading(`PDF ${fi+1}/${total}: ${modelId} 解析中...（10〜30秒）`, Math.round((fi/total)*100 + 20));
+
+  const prompt = buildGeminiPrompt();
+  const requestBody = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: 'application/pdf', data: base64 } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+  };
+
+  const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelId + ':generateContent?key=' + geminiKey;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    let errMsg = 'Gemini API エラー (HTTP ' + response.status + ')';
+    let isRateLimit = false;
+    try {
+      const ej = JSON.parse(errBody);
+      if (ej.error?.message) errMsg = ej.error.message;
+      if (response.status === 429 || /quota|rate.?limit|resource.?exhausted/i.test(errMsg)) isRateLimit = true;
+    } catch(e) {}
+    if (isRateLimit) {
+      const currentModel = document.getElementById('gemini-model').value;
+      const altModel = currentModel === 'gemini-2.5-flash' ? 'Gemini 2.0 Flash' : 'Gemini 2.5 Flash';
+      alert('APIの利用制限に達しました。\n\n対処法:\n① しばらく待ってから再試行する（数分〜1時間）\n② 接続設定で「' + altModel + '」に切り替えて再試行する');
+    }
+    throw new Error(errMsg);
+  }
+
+  const result = await response.json();
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini応答が空です');
+
+  // JSON抽出（コードブロック対応）
+  let jsonStr = text.trim();
+  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) jsonStr = jsonMatch[1].trim();
+  // 先頭/末尾の非JSONを除去
+  const braceStart = jsonStr.indexOf('{');
+  const braceEnd = jsonStr.lastIndexOf('}');
+  if (braceStart !== -1 && braceEnd !== -1) jsonStr = jsonStr.substring(braceStart, braceEnd + 1);
+
+  const fields = JSON.parse(jsonStr);
+
+  console.log('[Gemini AI Direct]', file.name, 'raw:', text, 'parsed:', fields);
+  return { fields, rawResponse: text };
+}
+
+
+// ============================================================
+// シートタイプ判定
+// ============================================================
+function detectSheetType(text, fileName) {
+  const t = (text + ' ' + fileName).replace(/\s/g, '');
+  if (/基礎[VvＶ][eEｅ][rRｒ]|基礎ver/i.test(t)) return 'kiso';
+  if (/目的地[VvＶ][eEｅ][rRｒ]|目的地ver/i.test(t)) return 'mokutekichi';
+  const kisoKw = ['マンション住戸数','管理会社','アパート','分譲','(賃貸)'];
+  const mokuKw = ['ゴルフ','ホテル','飲食','病院','宿泊','温浴','ショッピング','駐車料金','契約プラン'];
+  return kisoKw.filter(k=>t.includes(k)).length >= mokuKw.filter(k=>t.includes(k)).length ? 'kiso' : 'mokutekichi';
+}
+
+// ============================================================
+// テキストからフィールド抽出（大幅改善版v2）
+// 改善点:
+//   - 正規表現をOCRノイズに対応（ラベル文字の誤認識を許容）
+//   - チェックボックス検出パターンを大幅拡張
+//   - タブ区切り値の解析を強化
+//   - 複数行にまたがる値の検出を改善
+//   - 数値の全角/OCR誤認をその場で補正
+// ============================================================
+function extractFieldsFromSingleSource(text, type) {
+  const data = {}, keys = new Set();
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const full = lines.join(' ');
+  // 全角→半角ノーマライズ
+  const norm = s => {
+    if (!s) return '';
+    return s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+            .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+            .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+            .replace(/[ー−‐–—]/g,'-').trim();
+  };
+  // 数値ノーマライズ: OCRで O→0, l/I→1, S→5 等
+  const normNum = s => {
+    if (!s) return '';
+    let n = norm(s);
+    n = n.replace(/[OoО]/g,'0').replace(/[lIｌＩ|]/g,'1').replace(/[Ss]/g,'5').replace(/[Zz]/g,'2').replace(/[Bb]/g,'8').replace(/[Gg]/g,'6');
+    return n.replace(/[^\d]/g,'');
+  };
+
+  // ユーティリティ: 複数パターンを試行（改善版: tabSplit モード追加）
+  function tryMatch(patterns, target) {
+    for (const [re, grp] of patterns) {
+      if (target === 'lines') {
+        for (const line of lines) { const m = line.match(re); if (m && m[grp]?.trim()) return m[grp].trim(); }
+      } else if (target === 'linesNext') {
+        for (let i = 0; i < lines.length; i++) {
+          const m = lines[i].match(re);
+          if (m) {
+            if (m[grp]?.trim()) return m[grp].trim();
+            // 次の行を取得（ただしラベル行でなければ）
+            if (i+1 < lines.length) {
+              const next = lines[i+1].trim();
+              if (next && !/^[\(\（]|^会社名|^氏名|^施設|^住所|^業種|^申請|^充電|^土地|^新築|^リード|^申込|^収容|^マンション住戸|^商談/.test(next)) return next;
+            }
+          }
+        }
+      } else if (target === 'tabSplit') {
+        // タブ区切り行からラベル後の値を取得
+        for (const line of lines) {
+          const m = line.match(re);
+          if (m) {
+            const parts = line.split('\t');
+            for (let pi = 0; pi < parts.length - 1; pi++) {
+              if (re.test(parts[pi]) || parts[pi].match(re)) {
+                const val = parts[pi+1]?.trim();
+                if (val && val.length > 0) return val;
+              }
+            }
+            if (m[grp]?.trim()) return m[grp].trim();
+          }
+        }
+      } else {
+        const m = full.match(re); if (m && m[grp]?.trim()) return m[grp].trim();
+      }
+    }
+    return null;
+  }
+
+  // ============================================================
+  // チェックボックス検出（大幅拡張版）
+  // PDF内/OCR後のチェック記号パターン:
+  //   印刷系: ✓ ✔ ☑ ■ ☒ √ ✅ 🗸
+  //   手書き系: 〆 レ ﾚ ／ / ∨ v V ✕
+  //   OCRノイズ: ン シ ツ ソ ノ り J ) ] 」 》 〉 > 1 | ! ¥ Y
+  //   丸印: ◎ ● 〇 ◉
+  // ============================================================
+  const CHK = '[✓✔☑■☒〆√✅🗸\\/／レﾚvV∨◎●〇◉ンシツソノりJ\\)\\]」》〉>¥Y]';
+  const UNCHK = '[□☐○◯◻△▽]';
+
+  // チェック判定ヘルパー: ラベルの前後にチェック記号があるか
+  function hasCheck(text, label) {
+    // ラベルの直前にチェック記号
+    if (new RegExp(CHK + '\\s{0,3}' + label).test(text)) return true;
+    // ラベルの直後にチェック記号
+    if (new RegExp(label + '\\s{0,3}' + CHK).test(text)) return true;
+    // 括弧付きラベル
+    if (new RegExp(CHK + '\\s{0,3}[\\(（]?' + label).test(text)) return true;
+    return false;
+  }
+  function hasUncheck(text, label) {
+    if (new RegExp(UNCHK + '\\s{0,3}[\\(（]?' + label).test(text)) return true;
+    return false;
+  }
+
+  // ============================================================
+  // --- F: 担当営業 = ストア様担当営業 ---
+  // OCRノイズ対応: 「担当」「営業」の文字が崩れる場合を許容
+  // ============================================================
+  const sp = tryMatch([
+    [/(?:ストア[様さ]?)?担当営業[\s:：\t]*(.{1,20})/,1],
+    [/担当[営管]?業[\s:：\t]*(.{1,20})/,1],
+    [/[担扣][当畠][\s:：\t]+(.{1,15})/,1],
+    [/営業[\s:：\t]+(.{2,15})/,1],
+    [/営業担当[\s:：\t]*(.{2,15})/,1],
+  ], 'tabSplit') || tryMatch([
+    [/(?:ストア[様さ]?)?担当営業[\s:：\t]*(.{1,20})/,1],
+    [/担当[営管]?業[\s:：\t]*(.{1,20})/,1],
+    [/[担扣][当畠][\s:：\t]+(.{1,15})/,1],
+    [/営業[\s:：\t]+(.{2,15})/,1],
+  ], 'linesNext');
+  if (sp) {
+    // 値のクリーンアップ: 後続ラベルを除去
+    let spVal = sp.split(/\t/)[0].replace(/[（\(].*/,'').replace(/申請予定.*$/,'').replace(/施設名.*$/,'').trim();
+    if (spVal.length >= 2 && spVal.length <= 15) { data.salesPerson = spVal; keys.add('salesPerson'); }
+  }
+
+  // ============================================================
+  // --- H: 施設名 / 物件名 ---
+  // OCRノイズ対応: 「施設」「物件」の誤認を許容
+  // ============================================================
+  const fn = tryMatch([
+    [/施設名[称]?[\s:：\t]+([^\t]{2,50})/,1],
+    [/物件名[\s:：\t]+([^\t]{2,50})/,1],
+    [/施設名[称]?\s*(.{2,40})/,1],
+    [/物件名\s*(.{2,40})/,1],
+  ], 'tabSplit') || tryMatch([
+    [/施設名[称]?[\s:：\t]+([^\t]{2,50})/,1],
+    [/物件名[\s:：\t]+([^\t]{2,50})/,1],
+    [/施設名[称]?\s*(.{2,40})/,1],
+  ], 'linesNext');
+  if (fn && !/^会社名|^氏名|^住所|^業種/.test(fn) && fn.length < 50) {
+    const k = type === 'kiso' ? 'propertyName' : 'facilityName';
+    let fnVal = fn.split(/\t/)[0].trim();
+    // 後続情報を除去
+    fnVal = fnVal.replace(/\s*(会社名|〒|業種|申請).*$/, '').trim();
+    if (fnVal.length >= 2) { data[k] = fnVal; keys.add(k); }
+  }
+
+  // ============================================================
+  // --- R/P: 会社名 → 取引先会社名 + S/Q: 取引先住所 ---
+  // 商談相手セクション外の「会社名」を取得
+  // OCRノイズ対応: 「会社名」の文字崩れを許容
+  // ============================================================
+  let skipCompany = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/商談相手|商談姐手|簡談相手/.test(lines[i])) { skipCompany = true; continue; }
+    if (skipCompany) continue;
+    // 会社名ラベルを柔軟にマッチ
+    const m = lines[i].match(/^(?:会社名|会杜名|全社名)[\s:：\t]+(.+)/);
+    if (m && m[1].trim()) {
+      let val = m[1].trim();
+      // タブ区切りで住所が後続する場合
+      const tabParts = val.split('\t');
+      if (tabParts.length >= 2) {
+        data.companyName = tabParts[0].trim();
+        keys.add('companyName');
+        const rest = tabParts.slice(1).join(' ').trim();
+        if (/〒|[都道府県]/.test(rest)) { data.companyAddress = rest; keys.add('companyAddress'); }
+        break;
+      }
+      // 〒で住所を分離
+      const am = val.match(/^(.+?)\s*[〒T＝]\s*(\d{3}[\-ー]\d{4})\s*(.*)/);
+      if (am) {
+        data.companyName = am[1].trim();
+        data.companyAddress = '〒' + norm(am[2]) + ' ' + am[3].trim();
+        keys.add('companyAddress');
+      } else {
+        const am2 = val.match(/^(.+?)\s+((?:〒|[都道府県]).+)/);
+        if (am2) { data.companyName = am2[1].trim(); data.companyAddress = am2[2].trim(); keys.add('companyAddress'); }
+        else { data.companyName = val; }
+      }
+      keys.add('companyName');
+      break;
+    }
+    // 次の行に値がある場合（ラベルだけの行）
+    if (/^(?:会社名|会杜名|全社名)\s*$/.test(lines[i]) && i+1 < lines.length) {
+      const nextVal = lines[i+1].trim();
+      if (nextVal && !/^(?:会社名|氏名|住所|施設|業種)/.test(nextVal)) {
+        data.companyName = nextVal.split('\t')[0].trim();
+        keys.add('companyName');
+        break;
+      }
+    }
+  }
+
+  // ============================================================
+  // --- M/L: 施設住所 / 物件住所 ---
+  // OCRノイズ対応: 住所のラベル誤認、郵便番号の形式ゆれ
+  // ============================================================
+  const addr = tryMatch([
+    [/(?:施設|物件)住所[\s:：\t]+(.+)/,1],
+    [/(?:施設|物件)住[所斤]?[\s:：\t]+(.+)/,1],
+    [/^住所[\s:：\t]+(.+)/,1],
+  ], 'tabSplit') || tryMatch([
+    [/(?:施設|物件)住所[\s:：\t]+(.+)/,1],
+    [/(?:施設|物件)住[所斤]?[\s:：\t]+(.+)/,1],
+  ], 'linesNext');
+  if (addr) {
+    let addrVal = addr.split('\t')[0].trim();
+    // 後続ラベル除去
+    addrVal = addrVal.replace(/\s*(土地|所有者|会社名|業種).*$/, '').trim();
+    if (addrVal.length >= 3) { data.address = addrVal; keys.add('address'); }
+  }
+  if (!data.address) {
+    // 〒+郵便番号パターン（ゆるいマッチ）
+    for (const line of lines) {
+      const m = line.match(/[〒T〶]\s*(\d{3})\s*[\-ー−]?\s*(\d{4})\s*(.*)/);
+      if (m) {
+        const zip = m[1] + '-' + m[2];
+        if (!data.companyAddress || !data.companyAddress.includes(zip)) {
+          data.address = ('〒' + zip + ' ' + m[3]).trim();
+          keys.add('address'); break;
+        }
+      }
+    }
+  }
+  if (!data.address) {
+    // 都道府県で始まる行を住所と推定（会社住所でない場合）
+    const PREFS_SHORT = ['北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬','埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山','鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄'];
+    for (const line of lines) {
+      for (const p of PREFS_SHORT) {
+        if (line.startsWith(p) && line.length > 5 && (!data.companyAddress || !data.companyAddress.includes(p))) {
+          data.address = line.split('\t')[0].trim();
+          keys.add('address'); break;
+        }
+      }
+      if (data.address) break;
+    }
+  }
+
+  // ============================================================
+  // --- J: 業種 / マンション種別 ---
+  // チェックボックス拡張版: 多数のOCRノイズパターンに対応
+  // ============================================================
+  if (type === 'kiso') {
+    // 複数行を結合してチェック検出
+    const mansionLines = lines.filter(l => /業種|マンション|アパート|分譲|賃貸|月極/.test(l));
+    const mansionBlock = mansionLines.join(' ');
+    const mansionFull = full;
+
+    // 賃貸チェック
+    if (hasCheck(mansionFull, '賃貸') || hasCheck(mansionBlock, '賃貸') || /賃貸.*マンション.*アパート/.test(mansionBlock)) {
+      if (!hasCheck(mansionFull, '分譲') && !hasCheck(mansionFull, '月極')) {
+        data.mansionType = '賃貸'; keys.add('mansionType');
+      }
+    }
+    if (!data.mansionType && hasCheck(mansionFull, '分譲')) {
+      data.mansionType = '分譲'; keys.add('mansionType');
+    }
+    if (!data.mansionType && hasCheck(mansionFull, '月極')) {
+      data.mansionType = '月極駐車場'; keys.add('mansionType');
+    }
+    // フォールバック: 業種行のテキストから推定（チェック無しでも）
+    if (!data.mansionType) {
+      for (const line of mansionLines) {
+        // 未チェックでない場合のみ
+        if (/賃貸/.test(line) && !hasUncheck(line, '賃貸')) { data.mansionType = '賃貸'; keys.add('mansionType'); break; }
+        if (/月極/.test(line)) { data.mansionType = '月極駐車場'; keys.add('mansionType'); break; }
+        if (/分譲/.test(line) && !hasUncheck(line, '分譲')) { data.mansionType = '分譲'; keys.add('mansionType'); break; }
+      }
+    }
+    // プラン自動設定
+    if (data.mansionType === '月極駐車場') { data.plan = '月極駐車場ゼロプラン'; keys.add('plan'); }
+    else if (data.mansionType) { data.plan = 'マンションゼロプラン'; keys.add('plan'); }
+  } else {
+    // 目的地: 業種
+    const indList = ['宿泊施設','ゴルフ場','温浴施設','ショッピング','パチンコ店','飲食店','役場','自治体施設','病院','ディーラー','複合スーパー','空港','道の駅','葬祭場','倉庫','小規模複合','公園','学校','レジャー施設','レジャーホテル'];
+    for (const ind of indList) { if (full.includes(ind)) { data.industry = ind; keys.add('industry'); break; } }
+    if (!data.industry) {
+      // 部分一致フォールバック
+      if (/ゴルフ/.test(full)) { data.industry = 'ゴルフ場'; keys.add('industry'); }
+      else if (/ホテル|宿泊/.test(full)) { data.industry = '宿泊施設'; keys.add('industry'); }
+      else if (/温浴|温泉|スパ/.test(full)) { data.industry = '温浴施設'; keys.add('industry'); }
+      else if (/飲食|レストラン|カフェ/.test(full)) { data.industry = '飲食店'; keys.add('industry'); }
+      else if (/パチンコ|スロット/.test(full)) { data.industry = 'パチンコ店'; keys.add('industry'); }
+      else if (/ショッピング|モール/.test(full)) { data.industry = 'ショッピング'; keys.add('industry'); }
+    }
+    // プラン（チェック拡張版）
+    const planBlock = full;
+    if (hasCheck(planBlock, 'プライム')) { data.plan = 'プライムゼロプラン'; keys.add('plan'); }
+    else if (hasCheck(planBlock, 'スタンダード')) { data.plan = 'スタンダードプラン'; keys.add('plan'); }
+    else if (hasCheck(planBlock, 'ゼロプラン') && !/プライム/.test(planBlock)) { data.plan = 'ゼロプラン'; keys.add('plan'); }
+    else if (hasCheck(planBlock, 'ベーシック')) { data.plan = 'ベーシックプラン'; keys.add('plan'); }
+  }
+
+  // ============================================================
+  // --- N/M: 土地の所有者 ---
+  // チェック拡張版: 同一/別を柔軟に検出
+  // ============================================================
+  // 複数行を検索
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nextLine = (i+1 < lines.length) ? lines[i+1] : '';
+    const combined = line + ' ' + nextLine;
+    if (/土地|所有者/.test(combined)) {
+      if (hasCheck(combined, '同一') || /土地の所有者.*同一/.test(combined) || /同一.*所有/.test(combined)) {
+        if (!hasCheck(combined, '別') && !hasCheck(combined, '異な')) {
+          data.landOwner = '同一'; keys.add('landOwner'); break;
+        }
+      }
+      if (hasCheck(combined, '別') || hasCheck(combined, '異な')) {
+        data.landOwner = '異なる'; keys.add('landOwner'); break;
+      }
+    }
+  }
+
+  // ============================================================
+  // --- Q: 申込台数 → 申込口数 ---
+  // 数値のOCRノイズ対応: O→0, l→1 等
+  // ============================================================
+  const appCnt = tryMatch([
+    [/申込台数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+    [/申[込迂][台合]?数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+    [/申込[\s:：\t]*([0-9OolI０-９]{1,5})\s*(?:台|口|基)/,1],
+  ], 'tabSplit') || tryMatch([
+    [/申込台数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+    [/申[込迂][台合]?数[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+    [/申込[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+  ], 'linesNext');
+  if (appCnt) { data.applicationCount = normNum(appCnt); keys.add('applicationCount'); }
+
+  // ============================================================
+  // --- P/N: 収容台数 → 駐車場台数 ---
+  // ============================================================
+  const parkCnt = tryMatch([
+    [/収容台数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+    [/収[容客]台数[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+    [/駐車場[\s:：\t]*([0-9OolI０-９]{1,5})\s*台/,1],
+    [/収容[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+  ], 'tabSplit') || tryMatch([
+    [/収容台数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+    [/収[容客]台数[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+    [/収容[\s:：\t]*([0-9OolI０-９]{1,5})/,1],
+  ], 'linesNext');
+  if (parkCnt) { data.parkingCount = normNum(parkCnt); keys.add('parkingCount'); }
+
+  // ============================================================
+  // --- O: マンション住戸数 → 戸数 ---
+  // ============================================================
+  if (type === 'kiso') {
+    const units = tryMatch([
+      [/(?:マンション)?住戸数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+      [/住戸数[\s\t]*([0-9OolI０-９]{1,5})/,1],
+      [/([0-9０-９OolI]{1,5})\s*戸/,1],
+    ], 'tabSplit') || tryMatch([
+      [/(?:マンション)?住戸数[\s:：\t]*([0-9OolIＯ０-９]{1,5})/,1],
+      [/住戸数[\s\t]*([0-9OolI０-９]{1,5})/,1],
+      [/([0-9０-９]{1,5})\s*戸/,1],
+    ], 'linesNext');
+    if (units) { data.units = normNum(units); keys.add('units'); }
+  }
+
+  // ============================================================
+  // --- G: 申請予定時期 ---
+  // R8, Ｒ８, R 8, r8 等のゆれに対応
+  // チェック拡張版
+  // ============================================================
+  const R8_1 = 'R\\s*8\\s*[\\-ー−]?\\s*1';
+  const R8_2 = 'R\\s*8\\s*[\\-ー−]?\\s*2';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/申請予定|R\s*8|Ｒ\s*８/.test(norm(line + ' ' + (lines[i+1]||'')))) {
+      const combined = norm(line + ' ' + (lines[i+1] || '') + ' ' + (lines[i+2] || ''));
+      if (hasCheck(combined, R8_1) || (new RegExp(R8_1).test(combined) && new RegExp(CHK).test(combined))) {
+        if (!hasCheck(combined, R8_2)) { data.applicationPeriod = 'R8-1'; keys.add('applicationPeriod'); break; }
+      }
+      if (hasCheck(combined, R8_2)) {
+        data.applicationPeriod = 'R8-2'; keys.add('applicationPeriod'); break;
+      }
+      if (hasCheck(combined, '東京都補助金')) { data.applicationPeriod = '東京都補助金'; keys.add('applicationPeriod'); break; }
+      if (hasCheck(combined, '未定') || (/未定/.test(combined) && new RegExp(CHK).test(combined))) {
+        data.applicationPeriod = '未定'; keys.add('applicationPeriod'); break;
+      }
+      if (hasCheck(combined, '補助金申請なし') || hasCheck(combined, '申請なし')) { data.applicationPeriod = '補助金申請なし'; keys.add('applicationPeriod'); break; }
+    }
+  }
+  // フォールバック: 全文検索（チェック拡張版）
+  if (!data.applicationPeriod) {
+    const nf = norm(full);
+    if (hasCheck(nf, R8_1) || (new RegExp(R8_1).test(nf) && new RegExp(CHK).test(nf))) { data.applicationPeriod = 'R8-1'; keys.add('applicationPeriod'); }
+    else if (hasCheck(nf, R8_2)) { data.applicationPeriod = 'R8-2'; keys.add('applicationPeriod'); }
+    else if (/R\s*8\s*[\-ー]?\s*1/.test(nf)) { data.applicationPeriod = 'R8-1'; keys.add('applicationPeriod'); }
+    else if (/R\s*8\s*[\-ー]?\s*2/.test(nf)) { data.applicationPeriod = 'R8-2'; keys.add('applicationPeriod'); }
+  }
+
+  // ============================================================
+  // --- K: 充電器のkW数 ---
+  // 「6kW」「6KW」「6 kw」「6K W」「6kw」等のゆれに対応
+  // ============================================================
+  const kwFull = norm(full);
+  if (hasCheck(kwFull, '6\\s*[kKＫ]\\s*[wWＷ]') || /6\s*[kK]\s*[wW].*普通充電/i.test(kwFull)) {
+    data.kwNumber = '6kW'; keys.add('kwNumber');
+  } else if (hasCheck(kwFull, '3\\s*[kKＫ]\\s*[wWＷ]')) {
+    data.kwNumber = '3kW'; keys.add('kwNumber');
+  }
+  if (!data.kwNumber) {
+    if (/6\s*[kKＫ]\s*[wWＷ]/i.test(kwFull) && !/3\s*[kK]\s*[wW]/i.test(kwFull)) { data.kwNumber = '6kW'; keys.add('kwNumber'); }
+    else if (/3\s*[kKＫ]\s*[wWＷ]/i.test(kwFull) && !/6\s*[kK]\s*[wW]/i.test(kwFull)) { data.kwNumber = '3kW'; keys.add('kwNumber'); }
+  }
+
+  // ============================================================
+  // --- L: 新築or既築（基礎のみ）---
+  // ============================================================
+  if (type === 'kiso') {
+    if (hasCheck(full, '新築')) { data.newOrExisting = '新築'; }
+    else { data.newOrExisting = '既築'; }
+    keys.add('newOrExisting');
+  }
+
+  // ============================================================
+  // --- E: リード獲得パートナー ---
+  // ============================================================
+  if (hasCheck(full, 'ストア単独') || hasCheck(full, 'ストア')) {
+    if (!hasCheck(full, 'エネ同行') && !hasCheck(full, '共栄')) {
+      data.leadPartner = 'ストア'; keys.add('leadPartner');
+    }
+  }
+  if (!data.leadPartner && (hasCheck(full, 'エネ同行') || hasCheck(full, '共栄単独') || hasCheck(full, '共栄'))) {
+    data.leadPartner = 'エネ同行'; keys.add('leadPartner');
+  }
+
+  // ============================================================
+  // --- V: メールアドレス ---
+  // OCRノイズ対応: @のゆれ、ドット抜け、スペース混入
+  // ============================================================
+  // 正確なメールアドレス
+  const emails = full.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
+  if (emails) { data.csEmail = emails[0]; keys.add('csEmail'); }
+  // OCRノイズ対応
+  if (!data.csEmail) {
+    const emailNoisy = full.match(/([a-zA-Z0-9._%+\-]{2,})\s*[@＠⑧]\s*([a-zA-Z0-9.\-]+\s*\.\s*[a-zA-Z]{2,})/);
+    if (emailNoisy) { data.csEmail = (emailNoisy[1]+'@'+emailNoisy[2]).replace(/\s/g,''); keys.add('csEmail'); }
+  }
+  // 全角＠対応
+  if (!data.csEmail) {
+    const emailZenkaku = norm(full).match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+    if (emailZenkaku) { data.csEmail = emailZenkaku[0]; keys.add('csEmail'); }
+  }
+
+  // ============================================================
+  // --- T/R: クラウドサイン送付先会社名 + U/S: 担当者名 ---
+  // 商談相手セクション解析（OCRノイズ対応版）
+  // ============================================================
+  let inShoudan = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/商談相手|商談姐手|簡談相手|商談担当/.test(lines[i])) { inShoudan = true; continue; }
+    if (inShoudan) {
+      // 氏名を探す
+      const nm = lines[i].match(/(?:氏名|氏[各名]|名前)[\s:：\t]+(.{1,25})/);
+      if (nm && nm[1].trim().length >= 2 && nm[1].trim().length < 20) {
+        let nameVal = nm[1].trim().replace(/[（\(].*/,'').split('\t')[0].trim();
+        if (nameVal.length >= 2) { data.csPersonName = nameVal; keys.add('csPersonName'); }
+      }
+      // タブ区切りの氏名
+      if (!data.csPersonName) {
+        const tabParts = lines[i].split('\t');
+        for (let ti = 0; ti < tabParts.length - 1; ti++) {
+          if (/氏名|名前/.test(tabParts[ti])) {
+            const nameVal = tabParts[ti+1]?.trim();
+            if (nameVal && nameVal.length >= 2 && nameVal.length < 20) {
+              data.csPersonName = nameVal.replace(/[（\(].*/,'').trim();
+              keys.add('csPersonName');
+            }
+          }
+        }
+      }
+      // 会社名を探す（商談相手セクション内）
+      const cm = lines[i].match(/(?:会社名|会杜名|全社名)[\s:：\t]+(.+)/);
+      if (cm && cm[1].trim()) {
+        const val = cm[1].trim().split('\t')[0].trim();
+        if (/同上/.test(val) && data.companyName) { data.csCompany = data.companyName; }
+        else if (!/同上/.test(val) && val.length > 1) { data.csCompany = val; }
+        keys.add('csCompany');
+      }
+      // メールアドレスを探す
+      const emLine = lines[i];
+      const emMatch = emLine.match(/(?:メール|mail|Mail|ｍａｉｌ)[\s:：\t]*([^\s\t]+@[^\s\t]+)/i);
+      if (emMatch) { data.csEmail = emMatch[1].replace(/\s/g,''); keys.add('csEmail'); }
+      // タブ区切りメール
+      if (!data.csEmail || !/メール/.test(emLine)) {
+        const tabParts = emLine.split('\t');
+        for (let ti = 0; ti < tabParts.length - 1; ti++) {
+          if (/メール|mail/i.test(tabParts[ti])) {
+            const emVal = tabParts[ti+1]?.trim();
+            if (emVal && /@/.test(emVal)) { data.csEmail = emVal.replace(/\s/g,''); keys.add('csEmail'); }
+          }
+        }
+      }
+      // セクション終了判定（広めに）
+      if (/施設連絡先|管理会社|マンション住戸数|収容台数|申込台数|充電器/.test(lines[i])) break;
+    }
+  }
+
+  // ============================================================
+  // --- 目的地用: 会社住所 ---
+  // ============================================================
+  if (type === 'mokutekichi' && !data.companyAddress) {
+    const ca = tryMatch([
+      [/(?:会社|取引先)住所[\s:：\t]+(.+)/,1],
+      [/住所[\s:：\t]+(.+)/,1],
+    ], 'tabSplit');
+    if (ca) {
+      const caVal = ca.split('\t')[0].trim();
+      if (caVal.length >= 3 && caVal !== data.address) { data.companyAddress = caVal; keys.add('companyAddress'); }
+    }
+  }
+
+  return { data, keys: Array.from(keys) };
+}
+
+// マージ関数: pdf.js結果を優先し、OCR結果で補完
+function mergeResults(primaryResult, secondaryResult) {
+  const merged = {};
+  const allKeys = new Set([...Object.keys(primaryResult.data), ...Object.keys(secondaryResult.data)]);
+  for (const key of allKeys) {
+    merged[key] = primaryResult.data[key] || secondaryResult.data[key] || '';
+  }
+  const mergedKeys = [...new Set([...primaryResult.keys, ...secondaryResult.keys])];
+  return { data: merged, ocrKeys: mergedKeys };
+}
+
+// ============================================================
+// OCR補正エンジン
+// ============================================================
+function correctOcrFields(data, type) {
+  const log = [];
+  function toHankaku(s) { if(!s)return s; return s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[ａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[Ａ-Ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/＠/g,'@').replace(/．/g,'.').replace(/＿/g,'_').replace(/－/g,'-').replace(/＋/g,'+').replace(/ー/g,'-'); }
+  function levenshtein(a,b){const m=a.length,n=b.length;const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return dp[m][n]}
+  function fuzzyMatch(input,candidates,maxDist){if(!input)return null;let best=null,bestDist=maxDist+1;for(const c of candidates){if(input===c)return null;const d=levenshtein(input,c);if(d<bestDist){bestDist=d;best=c;}}return bestDist<=maxDist?best:null}
+  function fixOcrDigits(s){if(!s)return s;return s.replace(/[^0-9]/g,c=>{const map={'O':'0','o':'0','l':'1','I':'1','S':'5','B':'8','Z':'2','G':'6'};return map[c]||''})}
+  // 全角→半角
+  for(const key of Object.keys(data)){const orig=data[key];if(typeof orig!=='string')continue;const fixed=toHankaku(orig);if(fixed!==orig){data[key]=fixed;log.push({key,from:orig,to:fixed,rule:'全角→半角変換'})}}
+  // 数値補正
+  for(const key of ['units','parkingCount','applicationCount']){if(!data[key])continue;const orig=data[key];const fixed=fixOcrDigits(toHankaku(orig));if(fixed!==orig){data[key]=fixed;log.push({key,from:orig,to:fixed,rule:'数値OCR補正'})}}
+  // メール補正
+  if(data.csEmail){let e=data.csEmail.replace(/\s+/g,'');e=e.replace(/\.corn$/i,'.com').replace(/\.c0m$/i,'.com').replace(/gmai1\./i,'gmail.').replace(/gmaiI\./i,'gmail.').replace(/icIoud\./i,'icloud.').replace(/ic1oud\./i,'icloud.').replace(/\.co，jp$/i,'.co.jp').replace(/\.cojp$/i,'.co.jp');if(e!==data.csEmail){log.push({key:'csEmail',from:data.csEmail,to:e,rule:'メール補正'});data.csEmail=e}}
+  // 選択肢補正
+  if(data.kwNumber){const kw=data.kwNumber.toLowerCase().replace(/\s+/g,'');if(/6/.test(kw)&&data.kwNumber!=='6kW'){log.push({key:'kwNumber',from:data.kwNumber,to:'6kW',rule:'選択肢補正'});data.kwNumber='6kW'}else if(/3/.test(kw)&&data.kwNumber!=='3kW'){log.push({key:'kwNumber',from:data.kwNumber,to:'3kW',rule:'選択肢補正'});data.kwNumber='3kW'}}
+  if(data.mansionType){const t=data.mansionType;if(/賃貸/.test(t)&&t!=='賃貸'){log.push({key:'mansionType',from:t,to:'賃貸',rule:'選択肢補正'});data.mansionType='賃貸'}else if(/分譲/.test(t)&&t!=='分譲'){log.push({key:'mansionType',from:t,to:'分譲',rule:'選択肢補正'});data.mansionType='分譲'}else if(/月極/.test(t)&&t!=='月極駐車場'){log.push({key:'mansionType',from:t,to:'月極駐車場',rule:'選択肢補正'});data.mansionType='月極駐車場'}}
+  if(data.landOwner){const l=data.landOwner;if(/同一|同ー|回一/.test(l)&&l!=='同一'){log.push({key:'landOwner',from:l,to:'同一',rule:'選択肢補正'});data.landOwner='同一'}else if(/異/.test(l)&&l!=='異なる'){log.push({key:'landOwner',from:l,to:'異なる',rule:'選択肢補正'});data.landOwner='異なる'}}
+  if(data.leadPartner){const lp=data.leadPartner;const match=fuzzyMatch(lp,['ストア','エネ同行'],2);if(match){log.push({key:'leadPartner',from:lp,to:match,rule:'選択肢補正'});data.leadPartner=match}}
+  // 住所補正
+  const PREFS=['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
+  for(const key of ['address','companyAddress']){if(!data[key])continue;const orig=data[key];let fixed=orig.replace(/〒\s*(\d{3})\s*[-ー]?\s*(\d{4})/,'〒$1-$2');for(const p of PREFS){if(fixed.includes(p))break;const px=p.slice(0,2);const idx=fixed.indexOf(px);if(idx!==-1){const el=idx+p.length;const c=fixed.substring(idx,Math.min(el,fixed.length));if(levenshtein(c,p)<=1){fixed=fixed.substring(0,idx)+p+fixed.substring(el);break}}}if(fixed!==orig){data[key]=fixed;log.push({key,from:orig,to:fixed,rule:'住所補正'})}}
+  const numWarnings=[];
+  if(data.units&&parseInt(data.units)>500)numWarnings.push(`戸数「${data.units}」が大きすぎます`);
+  if(data.parkingCount&&parseInt(data.parkingCount)>1000)numWarnings.push(`駐車場台数「${data.parkingCount}」が大きすぎます`);
+  if(data.applicationCount&&parseInt(data.applicationCount)>100)numWarnings.push(`申込口数「${data.applicationCount}」が大きすぎます`);
+  return{log,numWarnings};
+}
+
+// ============================================================
+// PDF プレビュー画像生成（マーカー付き）
+// PDF上のテキスト位置を検出し、読み取り成功/失敗のマーカーを描画
+// ============================================================
+async function renderPdfPreview(file, canvasEl, ocrKeys, fieldData, type) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+  const page = await pdf.getPage(1);
+  const scale = 1.5;
+  const vp = page.getViewport({scale});
+  canvasEl.width = vp.width;
+  canvasEl.height = vp.height;
+  const ctx = canvasEl.getContext('2d');
+  await page.render({canvasContext: ctx, viewport: vp}).promise;
+
+  // テキスト位置を取得
+  const tc = await page.getTextContent();
+  const items = tc.items.filter(it => it.str.trim());
+
+  // 各フィールドに対応するPDFラベルキーワード
+  // key → PDF上で検索するラベル文字列のリスト
+  const LABEL_MAP_KISO = {
+    leadPartner:      ['ストア単独','エネ同行','リード'],
+    salesPerson:      ['担当営業','営業担当','担当'],
+    applicationPeriod:['申請予定','R8-1','R8-2'],
+    propertyName:     ['施設名','物件名'],
+    plan:             ['マンションプラン','月極駐車場','ゼロプラン','プラン'],
+    mansionType:      ['業種','賃貸','分譲','マンション','アパート'],
+    kwNumber:         ['充電器のkW','kW数','6kW','3kW','充電器'],
+    newOrExisting:    ['新築','既築'],
+    address:          ['施設住所','物件住所','住所'],
+    landOwner:        ['土地の所有者','所有者','土地'],
+    units:            ['マンション住戸数','住戸数'],
+    parkingCount:     ['収容台数'],
+    applicationCount: ['申込台数','申込'],
+    companyName:      ['会社名'],
+    companyAddress:   ['会社住所','取引先住所'],
+    csCompany:        ['商談相手','クラウドサイン'],
+    csPersonName:     ['氏名','担当者'],
+    csEmail:          ['メールアドレス','mail'],
+  };
+  const LABEL_MAP_MOKU = {
+    leadPartner:      ['ストア単独','エネ同行','リード'],
+    salesPerson:      ['担当営業','営業担当','担当'],
+    applicationPeriod:['申請予定','R8-1','R8-2'],
+    facilityName:     ['施設名','物件名'],
+    industry:         ['業種','ゴルフ','ホテル','飲食'],
+    plan:             ['プライム','スタンダード','ゼロプラン','ベーシック','契約プラン','プラン'],
+    kwNumber:         ['充電器のkW','kW数','6kW','3kW','充電器'],
+    address:          ['施設住所','物件住所','住所'],
+    landOwner:        ['土地の所有者','所有者','土地'],
+    parkingCount:     ['収容台数'],
+    applicationCount: ['申込台数','申込'],
+    companyName:      ['会社名'],
+    companyAddress:   ['会社住所','取引先住所'],
+    csCompany:        ['商談相手','クラウドサイン'],
+    csPersonName:     ['氏名','担当者'],
+    csEmail:          ['メールアドレス','mail'],
+  };
+  const labelMap = type === 'kiso' ? LABEL_MAP_KISO : LABEL_MAP_MOKU;
+  const fields = getFields(type);
+
+  // PDF座標→Canvas座標: viewport.convertToViewportPoint を使用
+  function toCanvas(pdfX, pdfY) {
+    const [cx, cy] = vp.convertToViewportPoint(pdfX, pdfY);
+    return { x: cx, y: cy };
+  }
+
+  // 各フィールドのラベル位置をPDFテキストアイテムから検索
+  const drawn = new Set();
+  for (const f of fields) {
+    const labelKws = labelMap[f.key] || [];
+    const detected = ocrKeys.includes(f.key) && fieldData[f.key];
+    let found = false;
+
+    for (const kw of labelKws) {
+      if (found) break;
+      for (const item of items) {
+        if (item.str.includes(kw)) {
+          const pos = toCanvas(item.transform[4], item.transform[5]);
+          const fontSize = Math.abs(item.transform[0]) || 8;
+          const textW = (item.width || item.str.length * fontSize * 0.55) * scale;
+          const h = fontSize * scale;
+
+          // 重複防止
+          const posKey = Math.round(pos.x / 20) + '_' + Math.round(pos.y / 20);
+          if (drawn.has(posKey)) continue;
+          drawn.add(posKey);
+
+          // マーカーの幅: ラベル＋値の領域まで
+          const markerW = Math.max(textW + 60, 120);
+
+          if (detected) {
+            // 緑ハイライト（読み取り成功）
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.22)';
+            ctx.fillRect(pos.x - 2, pos.y - h - 1, markerW, h + 4);
+            ctx.strokeStyle = 'rgba(22, 163, 74, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(pos.x - 2, pos.y - h - 1, markerW, h + 4);
+            // ○マーク
+            ctx.fillStyle = '#16a34a';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText('○', pos.x + markerW + 4, pos.y);
+          } else {
+            // 赤ハイライト（未検出）
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+            ctx.fillRect(pos.x - 2, pos.y - h - 1, markerW, h + 4);
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(pos.x - 2, pos.y - h - 1, markerW, h + 4);
+            ctx.setLineDash([]);
+            // ✕マーク
+            ctx.fillStyle = '#dc2626';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText('✕', pos.x + markerW + 4, pos.y);
+          }
+          found = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // 凡例をキャンバス右上に描画
+  const legendX = vp.width - 180;
+  const legendY = 10;
+  ctx.fillStyle = 'rgba(255,255,255,0.93)';
+  ctx.shadowColor = 'rgba(0,0,0,0.15)';
+  ctx.shadowBlur = 6;
+  ctx.fillRect(legendX - 10, legendY - 4, 186, 48);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#d1d5db';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX - 10, legendY - 4, 186, 48);
+  ctx.fillStyle = '#16a34a';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText('■ 緑 = 読み取り成功', legendX, legendY + 14);
+  ctx.fillStyle = '#dc2626';
+  ctx.fillText('■ 赤 = 未検出（要手動入力）', legendX, legendY + 34);
+}
+
+// ===== Entry =====
+function createEntry(n,t,pt,d,k,m){return{id:entryIdCounter++,name:n,type:t,pdfText:pt,data:d||{},ocrKeys:k||[],ocrMethod:m||'none',pdfFile:null}}
+function getFields(type){return type==='kiso'?KISO_FIELDS:MOKU_FIELDS}
+
+function renderEntries() {
+  const tabsEl=document.getElementById('entry-tabs'),panelsEl=document.getElementById('entry-panels');
+  tabsEl.innerHTML=entries.map((e,i)=>`<button class="tab ${i===activeEntryIdx?'active':''}" data-idx="${i}">${e.name} <small>(${e.type==='kiso'?'基礎':'目的地'})</small></button>`).join('');
+  tabsEl.querySelectorAll('.tab').forEach(b=>{b.addEventListener('click',()=>{saveCurrentForm();activeEntryIdx=+b.dataset.idx;renderEntries()})});
+  if(!entries.length){panelsEl.innerHTML='<p style="color:var(--gray-500);text-align:center;padding:40px">エントリがありません</p>';return}
+  const entry=entries[activeEntryIdx],fields=getFields(entry.type);
+  let html='';
+  if(entry.ocrMethod&&entry.ocrMethod!=='none'){
+    const methodLabels = { 'gemini': 'Gemini AI（高精度）', 'pdfjs-only': 'テキスト抽出のみ（APIキー未設定）' };
+    const methodLabel = methodLabels[entry.ocrMethod] || entry.ocrMethod;
+    const methodClass = entry.ocrMethod === 'gemini' ? 'google' : 'tesseract';
+    html+=`<div class="ocr-stats"><strong>OCR方式:</strong> <span class="ocr-method ${methodClass}">${methodLabel}</span>`;
+    if(entry.ocrKeys.length>0){const ssOcr=entry.ocrKeys.filter(k=>fields.some(f=>f.key===k)).length;const allOcr=entry.ocrKeys.length;const allTotal=getAllFields(entry.type).length;html+=` | <strong>${ssOcr}/${fields.length}</strong> 列を自動入力（全項目: ${allOcr}/${allTotal}）`}
+    html+='</div>';
+  }
+  if(entry.ocrKeys&&entry.ocrKeys.length>0)html+='<div class="ocr-notice"><strong>黄色背景 = OCR自動入力:</strong> 内容を必ずご確認ください。</div>';
+  // --- OCR読み取り結果マップ ---
+  if(entry.ocrMethod&&entry.ocrMethod!=='none'){
+    const okCount=entry.ocrKeys.filter(k=>entry.data[k]).length;
+    const ngCount=fields.length-okCount;
+    html+=`<div class="ocr-map"><h2>📊 OCR読み取り結果マップ</h2>`;
+    html+=`<div class="ocr-map-summary"><span class="ok-count">○ 読み取り成功: ${okCount}項目</span><span class="ng-count">✕ 未検出: ${ngCount}項目</span></div>`;
+    html+=`<div class="ocr-map-legend"><span><span class="ocr-field-icon ok" style="width:20px;height:20px;font-size:.7rem">○</span> 読み取り成功</span><span><span class="ocr-field-icon ng" style="width:20px;height:20px;font-size:.7rem">✕</span> 未検出（手動入力が必要）</span></div>`;
+    html+=`<div class="ocr-map-content">`;
+    // PDFプレビュー
+    html+=`<div class="ocr-map-pdf"><canvas id="ocr-pdf-preview"></canvas></div>`;
+    // フィールドリスト
+    html+=`<div class="ocr-map-fields">`;
+    for(const f of fields){
+      const val=entry.data[f.key]||'';
+      const detected=entry.ocrKeys.includes(f.key)&&val;
+      html+=`<div class="ocr-field-row">`;
+      html+=`<span class="ocr-field-icon ${detected?'ok':'ng'}">${detected?'○':'✕'}</span>`;
+      html+=`<span class="ocr-field-col">${f.col}</span>`;
+      html+=`<span class="ocr-field-label">${escHtml(f.label)}</span>`;
+      html+=`<span class="ocr-field-value" title="${escHtml(val)}">${detected?escHtml(val):'<span style="color:#dc2626">未検出</span>'}</span>`;
+      html+=`</div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+  if(entry.corrections&&entry.corrections.log.length>0){
+    html+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#1e40af">';
+    html+='<strong>自動補正 ('+entry.corrections.log.length+'件):</strong><ul style="margin:6px 0 0 16px;padding:0">';
+    for(const c of entry.corrections.log){const fl=getFields(entry.type).find(f=>f.key===c.key)?.label||c.key;html+=`<li><strong>${escHtml(fl)}</strong>: 「${escHtml(c.from)}」→「${escHtml(c.to)}」<small style="color:#6b7280">（${escHtml(c.rule)}）</small></li>`}
+    html+='</ul></div>';
+  }
+  if(entry.corrections&&entry.corrections.numWarnings.length>0){
+    html+='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#991b1b">';
+    html+='<strong>数値チェック警告:</strong><ul style="margin:6px 0 0 16px;padding:0">';
+    for(const w of entry.corrections.numWarnings)html+=`<li>${escHtml(w)}</li>`;
+    html+='</ul></div>';
+  }
+  if(entry.pdfText)html+=`<div class="card"><h2>抽出テキスト（参考）</h2><details><summary style="cursor:pointer;color:var(--primary);font-size:.85rem">テキストを表示</summary><div class="pdf-text">${escHtml(entry.pdfText)}</div></details></div>`;
+  html+=`<div class="card"><h2>シートタイプ</h2><div class="type-selector"><div class="type-btn ${entry.type==='kiso'?'selected':''}" data-type="kiso"><div class="title">基礎Ver</div><div class="desc">マンション・アパート・月極駐車場</div></div><div class="type-btn ${entry.type==='mokutekichi'?'selected':''}" data-type="mokutekichi"><div class="title">目的地Ver</div><div class="desc">ゴルフ場・ホテル・飲食店等</div></div></div></div>`;
+  html+='<div class="card"><h2>ヒアリングシート情報（E〜V列）</h2>';
+  for(let i=0;i<fields.length;i+=2){html+='<div class="form-row">';for(let j=i;j<Math.min(i+2,fields.length);j++){const f=fields[j],val=entry.data[f.key]||'',isOcr=entry.ocrKeys.includes(f.key)&&val,oc=isOcr?' ocr-filled':'';html+='<div class="form-group">';html+=`<label><span class="col-id">${f.col}</span>${escHtml(f.label)}${f.required?'<span class="required">*</span>':''}</label>`;if(f.options){html+=`<select data-key="${f.key}" class="${oc}"><option value="">-- 選択 --</option>`;for(const opt of f.options)html+=`<option value="${escHtml(opt)}" ${val===opt?'selected':''}>${escHtml(opt)}</option>`;html+='</select>'}else html+=`<input type="text" data-key="${f.key}" value="${escHtml(val)}" class="${oc}">`;html+='</div>'}html+='</div>'}
+  html+='</div>';
+  // --- ヒアリングシート全項目フォーム ---
+  const allFields=getAllFields(entry.type),allGroups=getAllFieldGroups(entry.type);
+  const ssKeys=new Set(fields.map(f=>f.key));
+  html+='<div class="card"><h2>ヒアリングシート全項目（詳細情報）</h2>';
+  html+='<p style="font-size:.82rem;color:var(--gray-500);margin-bottom:16px">スプレッドシート列に含まれない追加項目です。上記E〜V列と重複する項目は除外しています。</p>';
+  for(const gn of allGroups){
+    const gf=allFields.filter(f=>f.group===gn&&!ssKeys.has(f.key));
+    if(!gf.length)continue;
+    html+=`<div class="all-fields-group"><h3 class="all-fields-group-title">${escHtml(gn)}</h3>`;
+    for(let i=0;i<gf.length;i+=2){html+='<div class="form-row">';for(let j=i;j<Math.min(i+2,gf.length);j++){const f=gf[j],val=entry.data[f.key]||'',isOcr=entry.ocrKeys.includes(f.key)&&val,oc=isOcr?' ocr-filled':'';html+='<div class="form-group">';html+=`<label>${escHtml(f.label)}${f.required?'<span class="required">*</span>':''}</label>`;if(f.options){html+=`<select data-key="${f.key}" class="${oc}"><option value="">-- 選択 --</option>`;for(const opt of f.options)html+=`<option value="${escHtml(opt)}" ${val===opt?'selected':''}>${escHtml(opt)}</option>`;html+='</select>'}else html+=`<input type="text" data-key="${f.key}" value="${escHtml(val)}" class="${oc}">`;html+='</div>'}html+='</div>'}
+    html+='</div>';
+  }
+  html+='</div>';
+  html+=`<div style="text-align:right;margin-bottom:12px"><button class="btn btn-danger btn-delete-entry" data-idx="${activeEntryIdx}">このエントリを削除</button></div>`;
+  panelsEl.innerHTML=html;
+  panelsEl.querySelectorAll('.type-btn').forEach(b=>{b.addEventListener('click',()=>{saveCurrentForm();entry.type=b.dataset.type;renderEntries()})});
+  panelsEl.querySelectorAll('.btn-delete-entry').forEach(b=>{b.addEventListener('click',()=>{entries.splice(+b.dataset.idx,1);if(activeEntryIdx>=entries.length)activeEntryIdx=Math.max(0,entries.length-1);renderEntries()})});
+  panelsEl.querySelectorAll('.ocr-filled').forEach(el=>{el.addEventListener('input',()=>el.classList.remove('ocr-filled'));el.addEventListener('change',()=>el.classList.remove('ocr-filled'))});
+  // PDFプレビュー描画（マーカー付き）
+  const previewCanvas=document.getElementById('ocr-pdf-preview');
+  if(previewCanvas&&entry.pdfFile){
+    renderPdfPreview(entry.pdfFile, previewCanvas, entry.ocrKeys||[], entry.data||{}, entry.type).catch(e=>console.warn('PDF preview error:',e));
+  }
+}
+
+function saveCurrentForm(){if(!entries.length)return;const e=entries[activeEntryIdx];document.getElementById('entry-panels').querySelectorAll('[data-key]').forEach(el=>{e.data[el.dataset.key]=el.value})}
+
+// ============================================================
+// コピー機能（Step 3）
+// ============================================================
+function renderCopyArea() {
+  const area=document.getElementById('copy-area');
+  let html='';
+  for(let ei=0;ei<entries.length;ei++){
+    const e=entries[ei],fields=getFields(e.type);
+    const ename=e.data.propertyName||e.data.facilityName||e.name;
+    const sheetLabel=e.type==='kiso'?'【基礎】案件管理表':'【目的地】案件管理表';
+    const rowValues=fields.map(f=>e.data[f.key]||'');
+    const fullRow=['\t\t\t'].concat(rowValues).join('\t');  // A〜D列を空欄タブで先頭に追加
+    html+=`<div class="copy-section" style="margin-bottom:24px">`;
+    html+=`<h3>${escHtml(ename)} <small style="font-weight:400;color:var(--gray-500)">→ ${escHtml(sheetLabel)}</small></h3>`;
+    html+=`<button class="copy-row-btn" data-copy="${escHtml(fullRow)}" data-idx="${ei}">📋 A〜${fields[fields.length-1].col}列を一行コピー（スプレッドシートに貼り付け可能）</button>`;
+    html+=`<p class="copy-hint">↑ コピー後、スプレッドシートの<strong>A列</strong>を選択して Ctrl+V で貼り付けてください</p>`;
+    html+=`<div class="copy-preview">${escHtml(rowValues.map((v,i)=>fields[i].col+':'+(v||'(空)')).join(' | '))}</div>`;
+    html+='<details><summary style="cursor:pointer;color:var(--primary);font-size:.85rem;margin-bottom:8px">個別にコピー</summary><div style="background:#fff;border:1px solid var(--gray-200);border-radius:4px;padding:12px">';
+    for(const f of fields){const val=e.data[f.key]||'';html+=`<div class="copy-field"><span class="cf-col">${f.col}</span><span class="cf-label">${escHtml(f.label)}</span><span class="cf-value">${val?escHtml(val):'<span style="color:var(--gray-300)">(空)</span>'}</span>${val?`<button class="cf-copy-btn" data-copy="${escHtml(val)}">コピー</button>`:''}</div>`}
+    html+='</div></details>';
+    // --- ヒアリングシート全項目コピーセクション ---
+    const allF=getAllFields(e.type),allG=getAllFieldGroups(e.type);
+    let allText='';
+    for(const gn of allG){const gf=allF.filter(f=>f.group===gn);allText+=`【${gn}】\n`;for(const f of gf)allText+=`${f.label}: ${e.data[f.key]||''}\n`;allText+='\n'}
+    html+=`<div class="copy-section-all">`;
+    html+=`<h3>📋 ヒアリングシート全項目</h3>`;
+    html+=`<button class="copy-all-btn" data-copy="${escHtml(allText.trim())}" data-idx="${ei}">全項目をまとめてコピー（ラベル: 値 形式）</button>`;
+    html+=`<p class="copy-hint">↑ 全項目を「ラベル: 値」形式でコピーします</p>`;
+    for(const gn of allG){
+      const gf=allF.filter(f=>f.group===gn);
+      html+=`<div class="copy-group"><div class="copy-group-title">${escHtml(gn)}</div>`;
+      for(const f of gf){const val=e.data[f.key]||'';const ssTag=fields.some(sf=>sf.key===f.key)?' <small style="color:var(--primary);font-weight:600">[SS]</small>':'';html+=`<div class="copy-field"><span class="cf-label">${escHtml(f.label)}${ssTag}</span><span class="cf-value">${val?escHtml(val):'<span style="color:var(--gray-300)">(空)</span>'}</span>${val?`<button class="cf-copy-btn" data-copy="${escHtml(val)}">コピー</button>`:''}</div>`}
+      html+=`</div>`;
+    }
+    html+=`</div></div>`;
+  }
+  area.innerHTML=html;
+  area.querySelectorAll('[data-copy]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      try{await navigator.clipboard.writeText(btn.dataset.copy);if(btn.classList.contains('copy-row-btn')){const orig=btn.textContent;btn.textContent='✓ コピーしました！ スプレッドシートのA列に貼り付けてください';btn.style.background='#166534';setTimeout(()=>{btn.textContent=orig;btn.style.background=''},3000)}else if(btn.classList.contains('copy-all-btn')){const orig=btn.textContent;btn.textContent='✓ 全項目をコピーしました！';btn.style.background='#1d4ed8';setTimeout(()=>{btn.textContent=orig;btn.style.background=''},3000)}else{btn.textContent='✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent='コピー';btn.classList.remove('copied')},1500)}showToast('コピーしました')}
+      catch(err){const ta=document.createElement('textarea');ta.value=btn.dataset.copy;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('コピーしました')}
+    });
+  });
+}
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // 接続設定の開閉ヒント
+  const settingsToggle = document.getElementById('settings-toggle');
+  const toggleHint = settingsToggle.querySelector('.toggle-hint');
+  settingsToggle.addEventListener('toggle', () => {
+    toggleHint.textContent = settingsToggle.open ? 'クリックで閉じる ▲' : 'クリックで開く ▼';
+  });
+
+  // Gemini APIキー・モデル の復元（localStorage）
+  const savedGeminiKey = localStorage.getItem('hearing_gemini_key');
+  if (savedGeminiKey) document.getElementById('gemini-key').value = savedGeminiKey;
+  document.getElementById('gemini-key').addEventListener('change', function() {
+    localStorage.setItem('hearing_gemini_key', this.value.trim());
+  });
+  const savedModel = localStorage.getItem('hearing_gemini_model');
+  if (savedModel) document.getElementById('gemini-model').value = savedModel;
+  document.getElementById('gemini-model').addEventListener('change', function() {
+    localStorage.setItem('hearing_gemini_model', this.value);
+    if (this.value === 'gemini-2.0-flash') {
+      alert('Gemini 2.0 Flash は 2.5 Flash より読み取り精度が低くなる場合があります。\n\n2.5 Flash の利用制限が解除されたら、元に戻すことをおすすめします。');
+    }
+  });
+
+  // Gemini API 接続テスト
+  document.getElementById('btn-gas-test').addEventListener('click', async () => {
+    const geminiKey = document.getElementById('gemini-key').value.trim();
+    const statusEl = document.getElementById('gas-status');
+    if (!geminiKey) { statusEl.textContent = '❌ APIキーを入力してください'; statusEl.style.color='#dc2626'; return; }
+    statusEl.textContent = '⏳ 接続テスト中...'; statusEl.style.color='var(--gray-500)';
+    try {
+      const testModel = document.getElementById('gemini-model').value || 'gemini-2.5-flash';
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + testModel + ':generateContent?key=' + geminiKey, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({contents:[{parts:[{text:'Reply with just "OK"'}]}],generationConfig:{maxOutputTokens:10}})
+      });
+      if (r.ok) {
+        statusEl.textContent = '✅ Gemini API 接続OK'; statusEl.style.color='#16a34a';
+        localStorage.setItem('hearing_gemini_key', geminiKey);
+      } else {
+        const err = await r.json().catch(()=>({}));
+        const msg = err?.error?.message || 'HTTP ' + r.status;
+        statusEl.textContent = '❌ エラー: ' + msg; statusEl.style.color='#dc2626';
+      }
+    } catch(e) {
+      statusEl.textContent = '❌ 接続失敗: ' + e.message; statusEl.style.color='#dc2626';
+    }
+  });
+
+  setupDropZone('pdf-drop', 'pdf-input', files => {
+    for (const f of files) if (f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf')) pdfFiles.push(f);
+    renderPdfFileList(); checkReady();
+  });
+
+  // ============================================================
+  // Step1 → Step2: OCR解析（Gemini AI）
+  // ============================================================
+  document.getElementById('btn-to-step2').addEventListener('click', async () => {
+    entries=[]; activeEntryIdx=0;
+    if(!pdfFiles.length)return;
+    showLoading('解析中...', 'PDFを解析しています...');
+
+    const geminiKey = document.getElementById('gemini-key').value.trim();
+
+    for (let fi=0; fi<pdfFiles.length; fi++) {
+      const f=pdfFiles[fi];
+      const name=f.name.replace(/\.pdf$/i,'').replace(/＿|_/g,' ').trim();
+      try {
+        // Step 1: pdf.jsテキスト抽出（印刷テキスト → シートタイプ判定用）
+        updateLoading(`PDF ${fi+1}/${pdfFiles.length}: テキスト抽出中...`, (fi/pdfFiles.length)*100);
+        const pdfJsText = await extractTextFromPdfJs(f);
+        console.log('[pdf.js]', f.name, ':\n', pdfJsText);
+
+        let mergedData = {};
+        let ocrKeys = [];
+        let ocrMethod = 'none';
+        let type = detectSheetType(pdfJsText, f.name);
+        let combinedText = pdfJsText;
+
+        // ============================================================
+        // ★ 優先① Gemini AI （APIキー がある場合・GAS不要）
+        // ============================================================
+        if (geminiKey) {
+          try {
+            const geminiResult = await ocrViaGemini(f, geminiKey, fi, pdfFiles.length);
+            const fields = geminiResult.fields;
+            ocrMethod = 'gemini';
+
+            // Geminiが返したsheetTypeを使用
+            if (fields.sheetType === 'kiso' || fields.sheetType === 'mokutekichi') {
+              type = fields.sheetType;
+            }
+
+            // フィールド定義からキーリストを取得（スプレッドシート列）
+            const fieldDefs = getFields(type);
+            for (const fd of fieldDefs) {
+              if (fields[fd.key] && String(fields[fd.key]).trim()) {
+                mergedData[fd.key] = String(fields[fd.key]).trim();
+                ocrKeys.push(fd.key);
+              }
+            }
+            // 全項目フィールドも取り込み（重複キーはスキップ）
+            const allFieldDefs = getAllFields(type);
+            for (const fd of allFieldDefs) {
+              if (!mergedData[fd.key] && fields[fd.key] && String(fields[fd.key]).trim()) {
+                mergedData[fd.key] = String(fields[fd.key]).trim();
+                ocrKeys.push(fd.key);
+              }
+            }
+
+            combinedText = pdfJsText + '\n---Gemini AI---\n' + (geminiResult.rawResponse || JSON.stringify(fields, null, 2));
+            console.log('[Gemini] type:', type, 'fields:', mergedData);
+          } catch (geminiErr) {
+            console.error('Gemini OCR failed:', geminiErr);
+            showToast('Gemini失敗: ' + geminiErr.message + ' — 別の方式で再試行', 'error');
+            ocrMethod = 'none'; // フォールバックへ
+          }
+        }
+
+        // Gemini未使用 or 失敗時: pdf.jsのみで抽出
+        if (ocrMethod === 'none') {
+          const pdfJsResult = extractFieldsFromSingleSource(pdfJsText, type);
+          mergedData = pdfJsResult.data || {};
+          ocrKeys = pdfJsResult.keys || [];
+          ocrMethod = 'pdfjs-only';
+          showToast('Gemini APIキーが未設定です。接続設定からAPIキーを入力してください。', 'error');
+        }
+
+        // ファイル名から施設名を補完
+        if (type==='kiso'&&!mergedData.propertyName) { mergedData.propertyName=name; ocrKeys.push('propertyName'); }
+        if (type==='mokutekichi'&&!mergedData.facilityName) { mergedData.facilityName=name; ocrKeys.push('facilityName'); }
+
+        // OCR補正
+        const corrections = correctOcrFields(mergedData, type);
+        console.log('[Final]', ocrMethod, mergedData, 'corrections:', corrections.log);
+
+        const entry = createEntry(name, type, combinedText, mergedData, ocrKeys, ocrMethod);
+        entry.corrections = corrections;
+        entry.pdfFile = f;
+        entries.push(entry);
+      } catch(e) {
+        console.error('Error processing', f.name, e);
+        entries.push(createEntry(name, 'kiso', '（解析エラー: '+e.message+'）', {}, [], 'none'));
+      }
+    }
+
+    hideLoading();
+    const totalFields=entries.reduce((s,e)=>s+(e.ocrKeys?.length||0),0);
+    if(totalFields>0)showToast(`解析完了: ${totalFields}項目を自動入力`);
+    else showToast('解析完了: 手動で入力してください','info');
+    if(!entries.length)entries.push(createEntry('新規エントリ','kiso','',{},[],'none'));
+    renderEntries(); goToStep(2);
+  });
+
+  document.getElementById('btn-back-1').addEventListener('click',()=>goToStep(1));
+  document.getElementById('btn-back-2').addEventListener('click',()=>{goToStep(2);renderEntries()});
+  document.getElementById('btn-add-entry').addEventListener('click',()=>{saveCurrentForm();entries.push(createEntry('新規エントリ '+(entries.length+1),'kiso','',{},[],'none'));activeEntryIdx=entries.length-1;renderEntries()});
+  document.getElementById('btn-to-step3').addEventListener('click',()=>{saveCurrentForm();renderCopyArea();goToStep(3)});
+});
+</script>
+</body>
+</html>
