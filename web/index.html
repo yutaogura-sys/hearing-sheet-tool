@@ -325,8 +325,99 @@ const MOKU_ALL_FIELDS=[
 ];
 const ALL_GROUPS_KISO=['施設情報','商談相手','施設連絡先','管理会社','駐車場・充電器','紹介・同行','クラウドサイン・取引先','その他'];
 const ALL_GROUPS_MOKU=['施設情報','商談相手','施設連絡先','駐車場・充電器','紹介・同行','クラウドサイン・取引先','その他'];
-function getAllFields(type){return type==='kiso'?KISO_ALL_FIELDS:MOKU_ALL_FIELDS}
-function getAllFieldGroups(type){return type==='kiso'?ALL_GROUPS_KISO:ALL_GROUPS_MOKU}
+
+// ====== V2 フィールド定義（2026.02.25版ヒアリングシート） ======
+const KISO_ALL_FIELDS_V2=[
+  {key:'salesPerson',label:'担当営業',group:'施設情報'},
+  {key:'facilityName',label:'施設名',group:'施設情報'},
+  {key:'companyName',label:'会社名',group:'施設情報'},
+  {key:'companyAddress',label:'会社住所',group:'施設情報'},
+  {key:'facilityAddress',label:'施設住所',group:'施設情報'},
+  {key:'mansionType',label:'業種',group:'施設情報',options:['(賃貸)マンション・アパート','(分譲)マンション','月極駐車場']},
+  {key:'landOwner',label:'土地の所有者',group:'施設情報',options:['同一','別']},
+  {key:'landPermit',label:'土地の利用許諾書',group:'施設情報',options:['有','無し']},
+  {key:'applicationCount',label:'申込台数',group:'施設情報'},
+  {key:'parkingCount',label:'収容台数（店舗用除く）',group:'施設情報'},
+  {key:'outsideUserParking',label:'入居者・月極契約者以外が利用する車室の有無',group:'施設情報',options:['あり','なし']},
+  {key:'applicationPeriod',label:'申請予定時期',group:'施設情報',options:['R8-1','R8-2','未定','補助金申請なし']},
+  {key:'contactCompany',label:'商談相手 会社名',group:'商談相手'},
+  {key:'contactRole',label:'商談相手 役職',group:'商談相手'},
+  {key:'contactName',label:'商談相手 氏名',group:'商談相手'},
+  {key:'contactEmail',label:'商談相手 メールアドレス',group:'商談相手'},
+  {key:'contactPhone',label:'商談相手 電話番号',group:'商談相手'},
+  {key:'facilityContact1Company',label:'施設連絡先1 会社名',group:'施設連絡先'},
+  {key:'facilityContact1Role',label:'施設連絡先1 役職',group:'施設連絡先'},
+  {key:'facilityContact1Name',label:'施設連絡先1 氏名',group:'施設連絡先'},
+  {key:'facilityContact1HasEmail',label:'名刺にメールアドレスの記載',group:'施設連絡先',options:['あり','なし']},
+  {key:'facilityContact1Email',label:'施設連絡先1 メールアドレス',group:'施設連絡先'},
+  {key:'facilityContact1Phone',label:'施設連絡先1 電話番号',group:'施設連絡先'},
+  {key:'hasManagementCompany',label:'管理会社あり/なし',group:'管理会社',options:['なし','あり']},
+  {key:'managementCompanyName',label:'管理会社名',group:'管理会社'},
+  {key:'managementPersonName',label:'管理会社担当者名',group:'管理会社'},
+  {key:'managementEmail',label:'管理会社メールアドレス',group:'管理会社'},
+  {key:'managementPhone',label:'管理会社電話番号',group:'管理会社'},
+  {key:'mansionUnits',label:'マンション住戸数',group:'マンション・駐車場'},
+  {key:'ownerAddressSame',label:'マンション所有者の住所先',group:'マンション・駐車場',options:['同一','別']},
+  {key:'parkingType',label:'施設駐車場情報',group:'マンション・駐車場',options:['自走立体（マンションプラン）','平置き（マンション・月極駐車場）','敷地外設置（平置き/マンションプラン）','敷地外設置（自走立体/マンションプラン）']},
+  {key:'outsideParkingAddress',label:'敷地外設置の際の設置場所住所',group:'マンション・駐車場'},
+  {key:'existingCharger',label:'既設充電器',group:'マンション・駐車場',options:['あり','なし','撤去','増設']},
+  {key:'accompanyType',label:'ストア単独/エネ同行',group:'紹介・同行',options:['ストア単独','エネ同行']},
+  {key:'accompanyName',label:'同行者名',group:'紹介・同行'},
+  {key:'referralHas',label:'紹介元有無',group:'紹介・同行',options:['無し','あり']},
+  {key:'referralSource',label:'紹介元（金額含む）',group:'紹介・同行'},
+  {key:'notes',label:'備考',group:'その他'},
+];
+const MOKU_ALL_FIELDS_V2=[
+  {key:'salesPerson',label:'担当営業',group:'施設情報'},
+  {key:'facilityName',label:'施設名',group:'施設情報'},
+  {key:'companyName',label:'会社名',group:'施設情報'},
+  {key:'companyAddress',label:'会社住所',group:'施設情報'},
+  {key:'facilityAddress',label:'施設住所',group:'施設情報'},
+  {key:'industry',label:'業種',group:'施設情報',options:['宿泊施設','ゴルフ場','温浴施設','ショッピングモール・小売店','コインパーキング','パチンコ店','飲食店','役場・自治体施設','病院・クリニック','美理容室','農協・直売所','ディーラー','複合スーパー（GMS）','スーパー','コンビニ','駅','空港','道の駅','葬祭場','倉庫','小規模複合施設','自動車販売・工場','公園','学校','レジャー施設','レジャーホテル','コインランドリー','ガソリンスタンド','その他']},
+  {key:'industryOther',label:'業種（その他の場合）',group:'施設情報'},
+  {key:'landOwner',label:'土地の所有者',group:'施設情報',options:['同一','別']},
+  {key:'landPermit',label:'土地の利用許諾書',group:'施設情報',options:['有','無し']},
+  {key:'applicationCount',label:'申込台数',group:'施設情報'},
+  {key:'parkingCount',label:'収容台数',group:'施設情報'},
+  {key:'applicationPeriod',label:'申請予定時期',group:'施設情報',options:['R8-1','R8-2','未定','補助金申請なし']},
+  {key:'contactCompany',label:'商談相手 会社名',group:'商談相手（クラウドサイン送付先）'},
+  {key:'contactCompanyAddress',label:'商談相手 会社住所',group:'商談相手（クラウドサイン送付先）'},
+  {key:'contactRole',label:'商談相手 役職',group:'商談相手（クラウドサイン送付先）'},
+  {key:'contactName',label:'商談相手 氏名',group:'商談相手（クラウドサイン送付先）'},
+  {key:'contactEmail',label:'商談相手 メールアドレス',group:'商談相手（クラウドサイン送付先）'},
+  {key:'contactPhone',label:'商談相手 電話番号',group:'商談相手（クラウドサイン送付先）'},
+  {key:'facilityContact1Company',label:'施設連絡先1 会社名',group:'施設連絡先'},
+  {key:'facilityContact1Role',label:'施設連絡先1 役職',group:'施設連絡先'},
+  {key:'facilityContact1Name',label:'施設連絡先1 氏名',group:'施設連絡先'},
+  {key:'facilityContact1HasEmail',label:'名刺にメールアドレスの記載',group:'施設連絡先',options:['あり','なし']},
+  {key:'facilityContact1Email',label:'施設連絡先1 メールアドレス',group:'施設連絡先'},
+  {key:'facilityContact1Phone',label:'施設連絡先1 電話番号',group:'施設連絡先'},
+  {key:'parkingLocation',label:'駐車場情報',group:'駐車場・充電器',options:['施設内駐車場','施設内駐車場（敷地外設置）']},
+  {key:'outsideParkingAddress',label:'敷地外設置の際の設置場所住所',group:'駐車場・充電器'},
+  {key:'sharedParking',label:'複数施設で共同利用している駐車場',group:'駐車場・充電器',options:['あり','なし']},
+  {key:'hourlyParking',label:'時間貸し駐車場',group:'駐車場・充電器',options:['(併設された施設なし)','(併設された施設あり)']},
+  {key:'parkingFee',label:'駐車料金',group:'駐車場・充電器',options:['有料','条件付き無料','無料','不明']},
+  {key:'charger24h',label:'充電器24時間利用可能',group:'駐車場・充電器',options:['可能','不可能']},
+  {key:'charger24hHours',label:'不可の場合の利用可能時間',group:'駐車場・充電器'},
+  {key:'existingCharger',label:'既設充電器',group:'駐車場・充電器',options:['あり','なし','撤去','増設']},
+  {key:'contractPlan',label:'契約プラン',group:'駐車場・充電器',options:['プライムゼロプラン','スタンダードプラン','ゼロプラン','ベーシックプラン']},
+  {key:'accompanyType',label:'ストア単独/エネ同行',group:'紹介・同行',options:['ストア単独','エネ同行']},
+  {key:'accompanyName',label:'同行者名',group:'紹介・同行'},
+  {key:'referralHas',label:'紹介元有無',group:'紹介・同行',options:['無し','あり']},
+  {key:'referralSource',label:'紹介元（金額含む）',group:'紹介・同行'},
+  {key:'notes',label:'備考',group:'その他'},
+];
+const ALL_GROUPS_KISO_V2=['施設情報','商談相手','施設連絡先','管理会社','マンション・駐車場','紹介・同行','その他'];
+const ALL_GROUPS_MOKU_V2=['施設情報','商談相手（クラウドサイン送付先）','施設連絡先','駐車場・充電器','紹介・同行','その他'];
+
+function getAllFields(type,version){
+  if(version==='v2') return type==='kiso'?KISO_ALL_FIELDS_V2:MOKU_ALL_FIELDS_V2;
+  return type==='kiso'?KISO_ALL_FIELDS:MOKU_ALL_FIELDS;
+}
+function getAllFieldGroups(type,version){
+  if(version==='v2') return type==='kiso'?ALL_GROUPS_KISO_V2:ALL_GROUPS_MOKU_V2;
+  return type==='kiso'?ALL_GROUPS_KISO:ALL_GROUPS_MOKU;
+}
 
 let pdfFiles=[], entries=[], activeEntryIdx=0, entryIdCounter=0;
 
@@ -476,6 +567,12 @@ function buildGeminiPrompt() {
     '  "referralAmount": "紹介元金額（手書き）",',
     '  "accompanyType": "同行タイプチェック欄（ストア単独 / エネ同行）",',
     '  "accompanyName": "同行者名（手書き）",',
+    '  "landPermit": "土地の利用許諾書チェック欄（有 / 無し）※2026年版のみ",',
+    '  "outsideUserParking": "入居者・月極契約者以外が利用する車室の有無チェック欄（あり / なし）※2026年版のみ",',
+    '  "facilityContact1Role": "施設連絡先1の役職（手書き）",',
+    '  "facilityContact1HasEmail": "名刺にメールアドレスの記載チェック欄（あり / なし）",',
+    '  "outsideParkingAddress": "敷地外設置の際の設置場所住所（手書き）",',
+    '  "referralHas": "紹介元有無チェック欄（無し / あり）",',
     '  "notes": "備考欄（手書き）"',
     '}',
     '',
@@ -523,6 +620,12 @@ function buildGeminiPrompt() {
     '  "accompanyName": "同行者名（手書き）",',
     '  "referralSource": "紹介元（手書き）",',
     '  "referralAmount": "紹介元金額（手書き）",',
+    '  "landPermit": "土地の利用許諾書チェック欄（有 / 無し）※2026年版のみ",',
+    '  "contactCompanyAddress": "商談相手の会社住所（手書き）※2026年版のみ",',
+    '  "facilityContact1Role": "施設連絡先1の役職（手書き）",',
+    '  "facilityContact1HasEmail": "名刺にメールアドレスの記載チェック欄（あり / なし）",',
+    '  "outsideParkingAddress": "敷地外設置の際の設置場所住所（手書き）",',
+    '  "referralHas": "紹介元有無チェック欄（無し / あり）",',
     '  "notes": "備考欄（手書き）"',
     '}',
     '',
@@ -603,6 +706,18 @@ function detectSheetType(text, fileName) {
   const kisoKw = ['マンション住戸数','管理会社','アパート','分譲','(賃貸)'];
   const mokuKw = ['ゴルフ','ホテル','飲食','病院','宿泊','温浴','ショッピング','駐車料金','契約プラン'];
   return kisoKw.filter(k=>t.includes(k)).length >= mokuKw.filter(k=>t.includes(k)).length ? 'kiso' : 'mokutekichi';
+}
+
+// ============================================================
+// シートバージョン判定（V1=旧版 / V2=2026.02.25版）
+// ============================================================
+function detectSheetVersion(data, text, type) {
+  // V2固有フィールドがOCRデータに含まれている場合
+  if (data.landPermit || data.outsideUserParking || data.facilityContact1HasEmail || data.outsideParkingAddress || data.referralHas || data.contactCompanyAddress) return 'v2';
+  // テキスト内のV2固有マーカー
+  if (type === 'kiso' && /入居者.*契約者|車室の有無|利用許諾書/.test(text)) return 'v2';
+  if (type === 'mokutekichi' && /コインパーキング|美理容室|農協.*直売所|コインランドリー|ガソリンスタンド|利用許諾書/.test(text)) return 'v2';
+  return 'v1';
 }
 
 // ============================================================
@@ -1314,7 +1429,7 @@ function renderEntries() {
     const methodLabel = methodLabels[entry.ocrMethod] || entry.ocrMethod;
     const methodClass = entry.ocrMethod === 'gemini' ? 'google' : 'tesseract';
     html+=`<div class="ocr-stats"><strong>OCR方式:</strong> <span class="ocr-method ${methodClass}">${methodLabel}</span>`;
-    if(entry.ocrKeys.length>0){const ssOcr=entry.ocrKeys.filter(k=>fields.some(f=>f.key===k)).length;const allOcr=entry.ocrKeys.length;const allTotal=getAllFields(entry.type).length;html+=` | <strong>${ssOcr}/${fields.length}</strong> 列を自動入力（全項目: ${allOcr}/${allTotal}）`}
+    if(entry.ocrKeys.length>0){const ssOcr=entry.ocrKeys.filter(k=>fields.some(f=>f.key===k)).length;const allOcr=entry.ocrKeys.length;const allTotal=getAllFields(entry.type,entry.version||'v1').length;html+=` | <strong>${ssOcr}/${fields.length}</strong> 列を自動入力（全項目: ${allOcr}/${allTotal}）`}
     html+='</div>';
   }
   if(entry.ocrKeys&&entry.ocrKeys.length>0)html+='<div class="ocr-notice"><strong>黄色背景 = OCR自動入力:</strong> 内容を必ずご確認ください。</div>';
@@ -1360,9 +1475,10 @@ function renderEntries() {
   for(let i=0;i<fields.length;i+=2){html+='<div class="form-row">';for(let j=i;j<Math.min(i+2,fields.length);j++){const f=fields[j],val=entry.data[f.key]||'',isOcr=entry.ocrKeys.includes(f.key)&&val,oc=isOcr?' ocr-filled':'';html+='<div class="form-group">';html+=`<label><span class="col-id">${f.col}</span>${escHtml(f.label)}${f.required?'<span class="required">*</span>':''}</label>`;if(f.options){html+=`<select data-key="${f.key}" class="${oc}"><option value="">-- 選択 --</option>`;for(const opt of f.options)html+=`<option value="${escHtml(opt)}" ${val===opt?'selected':''}>${escHtml(opt)}</option>`;html+='</select>'}else html+=`<input type="text" data-key="${f.key}" value="${escHtml(val)}" class="${oc}">`;html+='</div>'}html+='</div>'}
   html+='</div>';
   // --- ヒアリングシート全項目フォーム ---
-  const allFields=getAllFields(entry.type),allGroups=getAllFieldGroups(entry.type);
+  const allFields=getAllFields(entry.type,entry.version||'v1'),allGroups=getAllFieldGroups(entry.type,entry.version||'v1');
   const ssKeys=new Set(fields.map(f=>f.key));
-  html+='<div class="card"><h2>ヒアリングシート全項目（詳細情報）</h2>';
+  const vLabel=(entry.version==='v2')?' <span style="background:#2563eb;color:#fff;font-size:.75rem;padding:2px 8px;border-radius:10px;margin-left:8px">2026年版</span>':'';
+  html+=`<div class="card"><h2>ヒアリングシート全項目${vLabel}</h2>`;
   html+='<p style="font-size:.82rem;color:var(--gray-500);margin-bottom:16px">スプレッドシート列に含まれない追加項目です。上記E〜V列と重複する項目は除外しています。</p>';
   for(const gn of allGroups){
     const gf=allFields.filter(f=>f.group===gn&&!ssKeys.has(f.key));
@@ -1407,10 +1523,11 @@ function renderCopyArea() {
     for(const f of fields){const val=e.data[f.key]||'';html+=`<div class="copy-field"><span class="cf-col">${f.col}</span><span class="cf-label">${escHtml(f.label)}</span><span class="cf-value">${val?escHtml(val):'<span style="color:var(--gray-300)">(空)</span>'}</span>${val?`<button class="cf-copy-btn" data-copy="${escHtml(val)}">コピー</button>`:''}</div>`}
     html+='</div></details>';
     // --- ヒアリングシート全項目コピーセクション ---
-    const allF=getAllFields(e.type),allG=getAllFieldGroups(e.type);
+    const allF=getAllFields(e.type,e.version||'v1'),allG=getAllFieldGroups(e.type,e.version||'v1');
     const allText=allF.map(f=>e.data[f.key]||'').join('\t');
+    const vTag=(e.version==='v2')?' <span style="background:#2563eb;color:#fff;font-size:.7rem;padding:2px 8px;border-radius:10px">2026年版</span>':'';
     html+=`<div class="copy-section-all">`;
-    html+=`<h3>📋 ヒアリングシート全項目</h3>`;
+    html+=`<h3>📋 ヒアリングシート全項目${vTag}</h3>`;
     html+=`<button class="copy-all-btn" data-copy="${escHtml(allText)}" data-idx="${ei}">全項目をまとめてコピー（タブ区切り・行形式）</button>`;
     html+=`<p class="copy-hint">↑ 全項目を1行（タブ区切り）でコピーします。スプレッドシートの行に貼り付け可能です</p>`;
     for(const gn of allG){
@@ -1533,9 +1650,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ocrKeys.push(fd.key);
               }
             }
-            // 全項目フィールドも取り込み（重複キーはスキップ）
-            const allFieldDefs = getAllFields(type);
-            for (const fd of allFieldDefs) {
+            // 全項目フィールドも取り込み（V1+V2の全キーを対象、重複キーはスキップ）
+            const allFieldDefsAll = [...new Map([...getAllFields(type,'v1'),...getAllFields(type,'v2')].map(fd=>[fd.key,fd])).values()];
+            for (const fd of allFieldDefsAll) {
               if (!mergedData[fd.key] && fields[fd.key] && String(fields[fd.key]).trim()) {
                 mergedData[fd.key] = String(fields[fd.key]).trim();
                 ocrKeys.push(fd.key);
@@ -1568,7 +1685,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const corrections = correctOcrFields(mergedData, type);
         console.log('[Final]', ocrMethod, mergedData, 'corrections:', corrections.log);
 
+        const version = detectSheetVersion(mergedData, combinedText, type);
         const entry = createEntry(name, type, combinedText, mergedData, ocrKeys, ocrMethod);
+        entry.version = version;
         entry.corrections = corrections;
         entry.pdfFile = f;
         entries.push(entry);
